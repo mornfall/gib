@@ -13,7 +13,7 @@ typedef struct job
     char name[];
 } job_t;
 
-void job_fork( job_t *j )
+void job_fork( job_t *j, int dirfd )
 {
     int fds[ 2 ];
 
@@ -38,6 +38,7 @@ void job_fork( job_t *j )
 
         argv[ i ] = 0;
 
+        fchdir( dirfd );
         dup2( fds[ 1 ], 3 );
         execv( cmd->data, argv );
         sys_error( "execv %s (job %s):", cmd->data, j->name );

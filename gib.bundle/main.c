@@ -9,6 +9,7 @@ typedef struct
 {
     char *srcdir;
     char *outdir;
+    int outdir_fd;
 
     cb_tree env;
     cb_tree nodes;
@@ -39,7 +40,7 @@ bool job_start( state_t *s )
 
     job_t *j = s->job_next;
     s->job_next = j->next;
-    job_fork( j );
+    job_fork( j, s->outdir_fd );
     s->running_count ++;
 
     assert( j->pipe_fd < MAX_FD );
@@ -185,7 +186,12 @@ int main( int argc, const char *argv[] )
     s.running_max = jobs && jobs->list ? atoi( jobs->list->data ) : 4;
 
     create_jobs( &s, all ); /* TODO */
+
     mkdir( s.outdir, 0777 ); /* ignore errors */
+    s.outdir_fd = open( s.outdir, O_DIRECTORY | O_CLOEXEC );
+    if ( s.outdir_fd < 0 )
+        sys_error( "opening output directory %s", s.outdir );
+
     main_loop( &s );
 
     /*
