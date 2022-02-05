@@ -36,6 +36,7 @@ void job_queue( state_t *s, job_t *j )
     if ( j->queued )
         return;
 
+    fprintf( s->debug, "queue: %s [%llx → %llx]\n", j->name, j->node->stamp, j->node->new_stamp );
     j->queued = true;
 
     if ( !s->job_next )
