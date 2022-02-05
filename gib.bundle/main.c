@@ -3,7 +3,16 @@
 #include "graph.h"
 #include "job.h"
 #include <sys/wait.h>
+#include <signal.h>
 #define MAX_FD 64
+
+static sig_atomic_t _signalled = 0;
+
+void sighandler( int sig )
+{
+    _signalled = sig;
+    signal( sig, SIG_DFL );
+}
 
 typedef struct
 {
@@ -90,6 +99,22 @@ void job_cleanup( state_t *s, int fd )
     }
 }
 
+void teardown( state_t *s )
+{
+    fprintf( stderr, "[caught signal %d, cleaning up]                \n", _signalled );
+    fflush( stderr );
+
+    job_t *j = NULL;
+
+    for ( int fd = 0; fd < MAX_FD; ++ fd )
+        if ( ( j = s->running[ fd ] ) )
+            kill( j->pid, SIGTERM );
+
+    for ( int fd = 0; fd < MAX_FD; ++ fd )
+        if ( s->running[ fd ] )
+            job_cleanup( s, fd );
+}
+
 void main_loop( state_t *s )
 {
     while ( true )
@@ -100,7 +125,7 @@ void main_loop( state_t *s )
 
         fprintf( stderr, "running: %d/%d\r", s->running_count, s->running_max );
 
-        if ( !s->running_count && !s->job_next )
+        if ( _signalled || ( !s->running_count && !s->job_next ) )
             return;
 
         fd_set ready;
@@ -117,6 +142,11 @@ void main_loop( state_t *s )
             if ( FD_ISSET( fd, &ready ) )
                 if ( job_update( s->running[ fd ] ) )
                     job_cleanup( s, fd );
+
+        if ( !_signalled )
+            while ( s->running_count < s->running_max )
+                if ( !job_start( s ) )
+                    break;
     }
 }
 
@@ -183,6 +213,13 @@ int main( int argc, const char *argv[] )
 
     for ( int i = 0; i < MAX_FD; ++i )
         s.running[ i ] = 0;
+
+    signal( SIGHUP, sighandler );
+    signal( SIGINT, sighandler );
+    signal( SIGTERM, sighandler );
+
+    signal( SIGPIPE, sighandler ); // ??
+    signal( SIGALRM, sighandler ); // ??
 
     var_t *jobs = env_get( &s.env, span_lit( "jobs" ) );
     node_t *all = graph_get( &s.nodes, span_lit( "all" ) );
