@@ -4,6 +4,12 @@
 
 typedef struct
 {
+    span_t data;
+    char name[];
+} dyn_t;
+
+typedef struct
+{
     int fd;
     int ptr;
     const char *file;
@@ -82,6 +88,87 @@ void writer_close( writer_t *w )
         sys_error( "renaming %s to %s", w->tmp, w->file );
     close( w->fd );
     free( w->tmp );
+}
+
+void save_dynamic( cb_tree *dyn, const char *path )
+{
+    writer_t w;
+    writer_open( &w, path );
+
+    for ( cb_iterator i = cb_begin( dyn ); !cb_end( &i ); cb_next( &i ) )
+    {
+        dyn_t *dyn = cb_get( &i );
+        writer_print( &w, "out %s\n", dyn->name );
+        writer_append( &w, dyn->data );
+        writer_print( &w, "\n" );
+    }
+
+    writer_close( &w );
+}
+
+void load_dynamic( cb_tree *nodes, cb_tree *dyn, const char *path )
+{
+    reader_t r;
+    node_t *n = NULL;
+
+    char *buf = NULL;
+    int buf_size = 0;
+    int buf_ptr = 0;
+
+    if ( !reader_init( &r, path ) )
+    {
+        if ( errno == ENOENT )
+            return;
+        else
+            sys_error( "reading %s", path );
+    }
+
+    while ( true )
+    {
+        bool done = !fetch_line( &r );
+
+        if ( span_empty( r.span ) && n )
+        {
+            dyn_t *di = malloc( VSIZE( di, name ) + strlen( n->name ) + 1 );
+            strcpy( di->name, n->name );
+            di->data = span_mk( buf, buf + buf_ptr );
+            cb_insert( dyn, di, VSIZE( di, name ), -1 );
+
+            buf = NULL;
+            buf_ptr = buf_size = 0;
+            n = NULL;
+            continue;
+        }
+
+        if ( done )
+            break;
+
+        span_t line = r.span;
+        span_t word = fetch_word( &r.span );
+
+        if ( span_eq( word, "out" ) )
+            n = graph_get( nodes, r.span );
+
+        if ( span_eq( word, "dep" ) )
+        {
+            node_t *dep = graph_get( nodes, r.span );
+
+            if ( !dep && r.span.str[ 0 ] == '/' )
+            {
+                dep = graph_add( nodes, r.span );
+                dep->type = sys_node;
+                graph_stat( dep );
+            }
+
+            cb_insert( &n->deps, dep, VSIZE( dep, name ), -1 );
+
+            if ( buf_ptr + span_len( line ) > buf_size )
+                buf = realloc( buf, buf_size += buf_size + span_len( line ) + 1 );
+            span_copy( buf + buf_ptr, line );
+            buf_ptr += span_len( line );
+            buf[ buf_ptr++ ] = '\n';
+        }
+    }
 }
 
 void write_stamps( cb_tree *nodes, const char *path )
