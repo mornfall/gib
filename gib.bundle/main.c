@@ -125,40 +125,46 @@ void teardown( state_t *s )
             job_cleanup( s, fd );
 }
 
-void main_loop( state_t *s )
+bool main_loop( state_t *s )
 {
-    while ( true )
+    fd_set ready;
+    FD_ZERO( &ready );
+
+    if ( s->running_count )
     {
-        while ( s->running_count < s->running_max )
-            if ( !job_start( s ) )
-                break;
-
-        fprintf( stderr, "running: %d/%d, queued: %d\r",
-                 s->running_count, s->running_max, s->queued_count );
-
-        if ( _signalled || ( !s->running_count && !s->job_next ) )
-            return;
-
-        fd_set ready;
-        FD_ZERO( &ready );
-
         for ( int i = 0; i < MAX_FD; ++i )
             if ( s->running[ i ] )
                 FD_SET( i, &ready );
 
-        if ( select( MAX_FD, &ready, 0, &ready, 0 ) == -1 )
-            sys_error( "select" );
+        struct timeval tv = { 1, 0 };
 
+        switch ( select( MAX_FD, &ready, 0, &ready, &tv ) )
+        {
+            case 0:
+                return true;
+            case -1:
+                if ( errno != EINTR )
+                    sys_error( "select" );
+            default:
+                ;
+        }
+    }
+
+    if ( _signalled )
+        teardown( s );
+
+    if ( s->running_count )
         for ( int fd = 0; fd < MAX_FD; ++ fd )
             if ( FD_ISSET( fd, &ready ) )
                 if ( job_update( s->running[ fd ] ) )
                     job_cleanup( s, fd );
 
-        if ( !_signalled )
-            while ( s->running_count < s->running_max )
-                if ( !job_start( s ) )
-                    break;
-    }
+    if ( !_signalled )
+        while ( s->running_count < s->running_max )
+            if ( !job_start( s ) )
+                break;
+
+    return !_signalled && ( s->running_count || s->job_next );
 }
 
 void create_jobs( state_t *s, node_t *goal )
@@ -259,7 +265,7 @@ int main( int argc, const char *argv[] )
     if ( s.outdir_fd < 0 )
         sys_error( "opening output directory %s", s.outdir );
 
-    main_loop( &s );
+    while ( main_loop( &s ) );
 
     write_stamps( &s.nodes, path_stamp );
     // write_dynamic( &s.nodes );
