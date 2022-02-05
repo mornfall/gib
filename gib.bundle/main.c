@@ -128,15 +128,15 @@ void create_jobs( state_t *s, node_t *goal )
 
     for ( cb_iterator i = cb_begin( &goal->deps ); !cb_end( &i ); cb_next( &i ) )
     {
-        node_t *b = cb_get( &i );
-        node_t *b_out = b->type == out_node ? b : 0;
-        create_jobs( s, b );
+        node_t *dep = cb_get( &i );
+        node_t *dep_out = dep->type == out_node ? dep : 0;
+        create_jobs( s, dep );
 
-        if ( out && out->new_stamp < b->stamp )
-            out->new_stamp = b->stamp;
+        if ( out && out->new_stamp < dep->stamp )
+            out->new_stamp = dep->stamp;
 
-        if ( b_out && b_out->stamp != b_out->new_stamp )
-            job_wanted( &s->jobs, b_out, goal );
+        if ( dep_out && dep_out->stamp != dep_out->new_stamp )
+            job_queue( s, job_wanted( &s->jobs, dep_out, goal ) );
     }
 }
 
