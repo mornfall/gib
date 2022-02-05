@@ -93,6 +93,21 @@ void env_add( cb_tree *env, span_t name, span_t val )
     var_add( var, val );
 }
 
+void env_expand( var_t *var, cb_tree *local, cb_tree *global, span_t str, const char *ref );
+
+void env_expand_rec( var_t *var, cb_tree *local, cb_tree *global,
+                     span_t prefix, const char *value, span_t suffix )
+{
+    char *buffer;
+    int len = asprintf( &buffer, "%.*s%s%.*s", span_len( prefix ), prefix.str,
+                                               value,
+                                               span_len( suffix ), suffix.str );
+
+    const char *next_ref = buffer + span_len( prefix ) + strlen( value );
+    env_expand( var, local, global, span_mk( buffer, buffer + len + 1 ), next_ref );
+    free( buffer );
+}
+
 void env_expand( var_t *var, cb_tree *local, cb_tree *global, span_t str, const char *ref )
 {
     if ( !ref )
@@ -127,16 +142,7 @@ void env_expand( var_t *var, cb_tree *local, cb_tree *global, span_t str, const 
     ref_var->frozen = true;
 
     for ( value_t *val = ref_var->list; val; val = val->next )
-    {
-        char *buffer;
-        int len = asprintf( &buffer, "%.*s%s%.*s", span_len( prefix ), prefix.str,
-                                                   val->data,
-                                                   span_len( suffix ), suffix.str );
-
-        const char *next_ref = buffer + span_len( prefix ) + strlen( val->data );
-        env_expand( var, local, global, span_mk( buffer, buffer + len + 1 ), next_ref );
-        free( buffer );
-    }
+        env_expand_rec( var, local, global, prefix, val->data, suffix );
 
     return;
 err:
