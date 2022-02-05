@@ -239,10 +239,8 @@ int main( int argc, const char *argv[] )
 
     main_loop( &s );
 
-    /*
-    write_stamps( &s.nodes );
-    write_dynamic( &s.nodes );
-    */
+    write_stamps( &s.nodes, path_stamp );
+    // write_dynamic( &s.nodes );
 
     return 0;
 }
