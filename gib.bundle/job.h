@@ -78,5 +78,9 @@ job_t *job_wanted( cb_tree *jobs, node_t *build, node_t *blocked )
 
 bool job_update( job_t *j )
 {
-    return false;
+    char buff[ 32 ];
+    bool done = read( j->pipe_fd, buff, 32 ) == 0;
+    if ( done )
+        close( j->pipe_fd );
+    return done;
 }
