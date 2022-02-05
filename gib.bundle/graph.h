@@ -67,5 +67,7 @@ void graph_dump( cb_tree *t )
                 fprintf( stderr, "'%s' ", v->data );
             fprintf( stderr, "\n" );
         }
+
+        fprintf( stderr, "\n" );
     }
 }
