@@ -52,27 +52,26 @@ node_t *graph_add( cb_tree *t, span_t name )
 }
 
 
-void graph_dump( cb_tree *t )
+void graph_dump( FILE *out, cb_tree *t )
 {
     for ( cb_iterator i = cb_begin( t ); !cb_end( &i ); cb_next( &i ) )
     {
         node_t *n = cb_get( &i );
-        fprintf( stderr, "node: %s\n", n->name );
+        fprintf( out, "node: %s\n", n->name );
 
         for ( cb_iterator j = cb_begin( &n->deps ); !cb_end( &j ); cb_next( &j ) )
         {
             node_t *d = cb_get( &j );
-            fprintf( stderr, "dep: %s\n", d->name );
+            fprintf( out, "dep: %s\n", d->name );
         }
 
         if ( n->cmd )
         {
-            fprintf( stderr, "cmd: " );
+            fprintf( out, "cmd: " );
             for ( value_t *v = n->cmd; v; v = v->next )
-                fprintf( stderr, "'%s' ", v->data );
-            fprintf( stderr, "\n" );
+                fprintf( out, "%s\n     ", v->data );
         }
 
-        fprintf( stderr, "\n" );
+        fprintf( out, "\n" );
     }
 }

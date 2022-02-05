@@ -30,6 +30,8 @@ typedef struct
     int queued_count;
     int running_count;
     int running_max;
+
+    FILE *debug;
 } state_t;
 
 void job_queue( state_t *s, job_t *j )
@@ -222,18 +224,19 @@ int main( int argc, const char *argv[] )
     if ( asprintf( &s.outdir, "%s%sdefault", outpath ?: s.srcdir, outpath ? "" : "/bin." ) < 0 )
         sys_error( "asprintf" );
 
-    char *path_dyn, *path_stamp;
+    char *path_dyn, *path_stamp, *path_debug;
 
-    if ( asprintf( &path_dyn, "%s/dynamic.gib", s.outdir ) < 0 )
+    if ( asprintf( &path_dyn, "%s/gib.dynamic", s.outdir ) < 0 )
         sys_error( "asprintf" );
 
-    if ( asprintf( &path_stamp, "%s/stamps.gib", s.outdir ) < 0 )
+    if ( asprintf( &path_stamp, "%s/gib.stamps", s.outdir ) < 0 )
+        sys_error( "asprintf" );
+
+    if ( asprintf( &path_debug, "%s/gib.debug", s.outdir ) < 0 )
         sys_error( "asprintf" );
 
     load_dynamic( &s.nodes, path_dyn );
     load_stamps( &s.nodes, path_stamp );
-
-    graph_dump( &s.nodes );
 
     s.job_next = 0;
     s.job_last = 0;
@@ -258,12 +261,15 @@ int main( int argc, const char *argv[] )
     s.queued_count = 0;
     s.running_max = jobs && jobs->list ? atoi( jobs->list->data ) : 4;
 
-    create_jobs( &s, all ); /* TODO */
-
     mkdir( s.outdir, 0777 ); /* ignore errors */
     s.outdir_fd = open( s.outdir, O_DIRECTORY | O_CLOEXEC );
     if ( s.outdir_fd < 0 )
         sys_error( "opening output directory %s", s.outdir );
+
+    s.debug = fopen( path_debug, "w" );
+    graph_dump( s.debug, &s.nodes );
+
+    create_jobs( &s, all ); /* TODO */
 
     time_t started = time( NULL );
     time_t elapsed = 0;
