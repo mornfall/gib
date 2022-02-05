@@ -76,6 +76,7 @@ void var_add( var_t *var, span_t str )
     value_t *val = malloc( VSIZE( val, data ) + span_len( str ) + 1 );
     val->next = 0;
     span_copy( val->data, str );
+    cb_insert( &var->set, val, VSIZE( val, data ), span_len( str ) );
 
     if ( var->list )
     {
@@ -146,8 +147,34 @@ void env_expand( var_t *var, cb_tree *local, cb_tree *global, span_t str, const 
 
     ref_var->frozen = true;
 
-    for ( value_t *val = ref_var->list; val; val = val->next )
-        env_expand_rec( var, local, global, prefix, val->data, suffix );
+    char ref_type = span_len( ref_spec ) ? ref_spec.str[ 0 ] : 0;
+    ref_spec.str ++;
+
+    if ( ref_type == ':' )
+        for ( cb_iterator i = cb_begin_at( &ref_var->set, ref_spec ); !cb_end( &i ); cb_next( &i ) )
+        {
+            value_t *val = cb_get( &i );
+
+            if ( strncmp( val->data, ref_spec.str, span_len( ref_spec ) ) ||
+                 strlen( val->data ) > span_len( ref_spec ) && val->data[ span_len( ref_spec ) ] != '/' )
+                break;
+
+            env_expand_rec( var, local, global, prefix, val->data, suffix );
+        }
+
+    else
+        for ( value_t *val = ref_var->list; val; val = val->next )
+            if ( ref_type == '!' )
+            {
+                if ( span_eq( ref_spec, "stem" ) )
+                    assert( 0 );
+                else
+                    error( "unknown substitution operator %.*s\n", span_len( ref_spec ), ref_spec.str );
+            }
+            else if ( !ref_type )
+                env_expand_rec( var, local, global, prefix, val->data, suffix );
+            else
+                error( "unknown substitution type %c\n", ref_type );
 
     return;
 err:
