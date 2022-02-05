@@ -137,6 +137,8 @@ int main( int argc, const char *argv[] )
     load_dynamic( &s.nodes, path_dyn );
     load_stamps( &s.nodes, path_stamp );
 
+    graph_dump( &s.nodes );
+
     s.job_next = 0;
     s.job_last = 0;
 
