@@ -2,6 +2,7 @@
 #include "common.h"
 #include "env.h"
 #include "graph.h"
+#include "manifest.h"
 #include "reader.h"
 
 struct rl_stack
@@ -123,6 +124,16 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
         for ( value_t *v = cmd->list; v; v = v->next )
             fprintf( stderr, "'%s' ", v->data );
         fprintf( stderr, "\n" );
+    }
+
+    if ( span_eq( cmd, "src" ) )
+    {
+        var_t *src = env_get( &s->globals, span_lit( "src" ) ) ?:
+                     env_set( &s->globals, span_lit( "src" ) );
+        var_t *path = var_alloc( span_lit( "manifest-path" ) );
+        env_expand( path, &s->locals, &s->globals, args, 0 );
+        for ( value_t *val = path->list; val; val = val->next )
+            load_manifest( s->nodes, src, val->data );
     }
 
     if ( span_eq( cmd, "out" ) )
