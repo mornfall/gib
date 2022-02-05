@@ -63,7 +63,10 @@ void job_cleanup( state_t *s, int fd )
         sys_error( "waitpid %d", j->pid );
 
     if ( WIFEXITED( status ) && WEXITSTATUS( status ) == 0 )
+    {
         fprintf( stderr, "%-*sok\n", 75, j->name );
+        n->stamp = n->new_stamp;
+    }
     else
     {
         fprintf( stderr, "%-*sno\n", 75, j->name );
@@ -71,7 +74,6 @@ void job_cleanup( state_t *s, int fd )
     }
 
     s->running_count --;
-    n->stamp = n->new_stamp;
 
     for ( cb_iterator i = cb_begin( &j->blocking ); !cb_end( &i ); cb_next( &i ) )
     {
