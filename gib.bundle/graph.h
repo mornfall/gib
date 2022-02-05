@@ -47,14 +47,12 @@ node_t *graph_add( cb_tree *t, span_t name )
 
 void graph_dump( cb_tree *t )
 {
-    cb_iterator i, j;
-
-    for ( cb_begin( &i, t ); !cb_end( &i ); cb_next( &i ) )
+    for ( cb_iterator i = cb_begin( t ); !cb_end( &i ); cb_next( &i ) )
     {
         node_t *n = cb_get( &i );
         fprintf( stderr, "node: %s\n", n->name );
 
-        for ( cb_begin( &j, &n->deps ); !cb_end( &j ); cb_next( &j ) )
+        for ( cb_iterator j = cb_begin( &n->deps ); !cb_end( &j ); cb_next( &j ) )
         {
             node_t *d = cb_get( &j );
             fprintf( stderr, "dep: %s\n", d->name );

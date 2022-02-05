@@ -67,35 +67,51 @@ void cb_iter_dive( cb_iterator *i )
     i->stack[ ++i->depth ] = n->child[ 0 ];
 }
 
-void cb_begin( cb_iterator *i, cb_tree *t )
+cb_iterator cb_begin( cb_tree *t )
 {
+    cb_iterator i;
     cb_node *n = t->root;
-    i->depth = i->max_depth = 0;
-
-    while ( n && n->vsize[ 0 ] == CB_VSIZE_INTERNAL )
-        ++ i->max_depth, n = n->child[ 0 ];
+    i.depth = -1;
 
     if ( !n )
-        return;
+        return i;
 
-    ++ i->max_depth;
-    n = n->child[ 0 ];
+    i.depth = i.max_depth = 0;
 
-    i->stack = calloc( i->max_depth + 1, sizeof( cb_node * ) );
-    i->stack[ 0 ] = t->root;
-    cb_iter_dive( i );
+    if ( t->vsize == CB_VSIZE_INTERNAL )
+    {
+        while ( n && n->vsize[ 0 ] == CB_VSIZE_INTERNAL )
+            ++ i.max_depth, n = n->child[ 0 ];
+
+        assert( n );
+
+        ++ i.max_depth;
+        n = n->child[ 0 ];
+    }
+
+    i.stack = calloc( i.max_depth + 1, sizeof( cb_node * ) );
+    i.stack[ 0 ] = t->root;
+
+    if ( t->vsize == CB_VSIZE_INTERNAL )
+        cb_iter_dive( &i );
+
+    return i;
 }
 
 void cb_next( cb_iterator *i )
 {
     int count = 0;
-    assert( i->depth > 0 );
 
-    while ( i->stack[ i->depth ] == ( ( cb_node * ) i->stack[ i->depth - 1 ] )->child[ 1 ] )
+    while ( i->depth > 0 &&
+            i->stack[ i->depth ] == ( ( cb_node * ) i->stack[ i->depth - 1 ] )->child[ 1 ] )
     {
         -- i->depth, ++ count;
-        if ( i->depth == 0 )
-            return;
+    }
+
+    if ( !i->depth )
+    {
+        -- i->depth;
+        return;
     }
 
     cb_node *parent = i->stack[ i->depth - 1 ];
@@ -107,7 +123,7 @@ void cb_next( cb_iterator *i )
 
 bool cb_end( cb_iterator *i )
 {
-    return i->depth == 0;
+    return i->depth == -1;
 }
 
 bool cb_dir( uint8_t c, uint8_t mask )

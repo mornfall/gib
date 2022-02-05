@@ -51,9 +51,7 @@ void job_cleanup( state_t *s, int fd )
 {
     job_t *j = s->running[ fd ];
     s->running_count --;
-    cb_iterator i;
-
-    for ( cb_begin( &i, &j->blocking ); !cb_end( &i ); cb_next( &i ) )
+    for ( cb_iterator i = cb_begin( &j->blocking ); !cb_end( &i ); cb_next( &i ) )
     {
         job_t *b = cb_get( &i );
 
@@ -95,9 +93,8 @@ void create_jobs( state_t *s, node_t *goal )
 
     goal->visited = true;
     node_t *out = goal->type == out_node ? goal : 0;
-    cb_iterator i;
 
-    for ( cb_begin( &i, &goal->deps ); !cb_end( &i ); cb_next( &i ) )
+    for ( cb_iterator i = cb_begin( &goal->deps ); !cb_end( &i ); cb_next( &i ) )
     {
         node_t *b = cb_get( &i );
         node_t *b_out = b->type == out_node ? b : 0;
