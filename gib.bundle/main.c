@@ -100,13 +100,13 @@ void job_cleanup( state_t *s, int fd )
 
     if ( WIFEXITED( status ) && WEXITSTATUS( status ) == 0 )
     {
-        fprintf( stderr, "%-*sok\n", 75, j->name );
+        fprintf( stderr, "\033[J\033[32mok\033[0m %s\n", j->name );
         n->stamp = n->new_stamp;
         ++ s->ok_count;
     }
     else
     {
-        fprintf( stderr, "%-*sno\n", 75, j->name );
+        fprintf( stderr, "\033[J\033[31mno\033[0m %s\n", j->name );
         ++ s->failed_count;
         n->failed = true;
     }
