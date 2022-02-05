@@ -29,19 +29,21 @@ node_t *graph_get( cb_tree *t, span_t name )
         return 0;
 }
 
+node_t *graph_put( cb_tree *t, node_t *node, int len )
+{
+    cb_init( &node->deps );
+
+    if ( cb_insert( t, node, VSIZE( node, name ), len ) )
+        return node;
+    else
+        return 0;
+}
+
 node_t *graph_add( cb_tree *t, span_t name )
 {
     node_t *node = calloc( 1, VSIZE( node, name ) + span_len( name ) + 1 );
     span_copy( node->name, name );
-    cb_init( &node->deps );
-
-    if ( !cb_insert( t, node, VSIZE( node, name ), span_len( name ) ) )
-    {
-        free( node );
-        return 0;
-    }
-
-    return node;
+    return graph_put( t, node, span_len( name ) ) ?: ( free( node ), ( node_t * ) 0 );
 }
 
 
