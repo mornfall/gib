@@ -142,39 +142,64 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
             rl_error( s, "out expanded into a list" );
     }
 
-    if ( span_eq( cmd, "add" ) || span_eq( cmd, "dep" ) )
+    bool let = false, set = false, split = false, add = false;
+    bool dep = span_eq( cmd, "dep" );
+    if ( span_eq( cmd, "set" ) )  set = true, split = false;
+    if ( span_eq( cmd, "set*" ) ) set = true, split = true;
+    if ( span_eq( cmd, "let" ) )  let = true, split = false;
+    if ( span_eq( cmd, "let*" ) ) let = true, split = true;
+    if ( span_eq( cmd, "add" ) )  add = true, split = false;
+    if ( span_eq( cmd, "add*" ) ) add = true, split = true;
+
+    if ( add || dep )
     {
-        span_t name = span_eq( cmd, "dep" ) ? span_lit( "dep" ) : fetch_word( &args );
+        span_t name = dep ? span_lit( "dep" ) : fetch_word( &args );
         var_t *var = env_get( &s->locals, name ) ?: env_get( s->globals, name );
 
         if ( !var )
             rl_error( s, "cannot add to a non-existent variable %.*s", span_len( name ), name.str );
 
         value_t *new = var->last;
-        env_expand( var, &s->locals, s->globals, args, 0 );
+
+        if ( split )
+            while ( !span_empty( args ) )
+            {
+                span_t word = fetch_word( &args );
+                env_expand( var, &s->locals, s->globals, word, 0 );
+            }
+        else
+            env_expand( var, &s->locals, s->globals, args, 0 );
+
         if ( !new )
             new = var->list;
 
-        if ( span_eq( cmd, "dep" ) )
+        if ( dep )
             for ( ; new; new = new->next )
                 if ( !graph_get( s->nodes, span_lit( new->data ) ) )
                     rl_error( s, "dep: node for '%s' does not exist", new->data );
     }
 
-    if ( span_eq( cmd, "set" ) || span_eq( cmd, "let" ) )
+    if ( set || let )
     {
         span_t name = fetch_word( &args );
 
         if ( env_get( &s->templates, name ) )
             rl_error( s, "name '%.*s' is already used for a template", span_len( name ), name.str );
 
-        var_t *var = env_set( span_eq( cmd, "set" ) ? s->globals : &s->locals, name );
+        var_t *var = env_set( set ? s->globals : &s->locals, name );
 
-        if ( span_eq( cmd, "set" ) )
+        if ( set )
             rl_set_position( s, name );
 
-        if ( !span_empty( args ) )
-            env_expand( var, &s->locals, s->globals, args, 0 );
+        if ( split )
+            while ( !span_empty( args ) )
+            {
+                span_t word = fetch_word( &args );
+                env_expand( var, &s->locals, s->globals, word, 0 );
+            }
+        else
+            if ( !span_empty( args ) )
+                env_expand( var, &s->locals, s->globals, args, 0 );
     }
 
     if ( span_eq( cmd, "use" ) )
