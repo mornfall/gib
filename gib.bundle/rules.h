@@ -121,11 +121,6 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
             span_t word = fetch_word( &args );
             env_expand( cmd, &s->locals, &s->globals, word, 0 );
         }
-
-        fprintf( stderr, "cmd: " );
-        for ( value_t *v = cmd->list; v; v = v->next )
-            fprintf( stderr, "'%s' ", v->data );
-        fprintf( stderr, "\n" );
     }
 
     if ( span_eq( cmd, "src" ) )
@@ -179,11 +174,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
             rl_set_position( s, name );
 
         if ( !span_empty( args ) )
-        {
-            fprintf( stderr, "set %.*s to '%.*s'\n", span_len( name ), name.str,
-                                                     span_len( args ), args.str );
             env_expand( var, &s->locals, &s->globals, args, 0 );
-        }
     }
 
     if ( span_eq( cmd, "use" ) )
@@ -258,8 +249,6 @@ void rl_statement( struct rl_state *s )
     iter = var_alloc( span_lit( "for-iter" ) );
     env_expand( iter, &s->locals, &s->globals, args, 0 );
     value_t *val = iter->list;
-
-    fprintf( stderr, "for: %.*s, %.*s\n", span_len( name ), name.str, span_len( args ), args.str );
 
     while ( val )
     {
