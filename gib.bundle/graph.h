@@ -59,5 +59,13 @@ void graph_dump( cb_tree *t )
             node_t *d = cb_get( &j );
             fprintf( stderr, "dep: %s\n", d->name );
         }
+
+        if ( n->cmd )
+        {
+            fprintf( stderr, "cmd: " );
+            for ( value_t *v = n->cmd; v; v = v->next )
+                fprintf( stderr, "'%s' ", v->data );
+            fprintf( stderr, "\n" );
+        }
     }
 }
