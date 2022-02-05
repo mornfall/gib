@@ -253,6 +253,16 @@ void create_jobs( state_t *s, node_t *goal )
     }
 }
 
+void set_goal( state_t *s, const char *name )
+{
+    node_t *goal = graph_get( &s->nodes, span_lit( name ) );
+
+    if ( goal )
+        create_jobs( s, goal );
+    else
+        error( "goal %s not defined", name );
+}
+
 int main( int argc, const char *argv[] )
 {
     state_t s;
@@ -310,11 +320,6 @@ int main( int argc, const char *argv[] )
     signal( SIGALRM, sighandler ); // ??
 
     var_t *jobs = env_get( &s.env, span_lit( "jobs" ) );
-    node_t *all = graph_get( &s.nodes, span_lit( "all" ) );
-
-    if ( !all )
-        fprintf( stderr, "goal all does not exist\n" ), exit( 1 );
-
     s.failed_count = 0;
     s.skipped_count = 0;
     s.ok_count = 0;
@@ -331,7 +336,11 @@ int main( int argc, const char *argv[] )
     s.debug = fopen( path_debug, "w" );
     graph_dump( s.debug, &s.nodes );
 
-    create_jobs( &s, all ); /* TODO */
+    for ( int i = 1; i < argc; ++ i )
+        set_goal( &s, argv[ i ] );
+
+    if ( argc == 1 )
+        set_goal( &s, "all" );
 
     time_t started = time( NULL );
     time_t elapsed = 0;
