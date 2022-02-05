@@ -15,7 +15,7 @@ struct rl_stack
 struct rl_state /* rule loader */
 {
     reader_t reader;
-    cb_tree locals, globals, templates;
+    cb_tree locals, *globals, templates;
     cb_tree positions;
     cb_tree *nodes;
     bool out_set, cmd_set, meta_set;
@@ -119,16 +119,16 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
         while ( !span_empty( args ) )
         {
             span_t word = fetch_word( &args );
-            env_expand( cmd, &s->locals, &s->globals, word, 0 );
+            env_expand( cmd, &s->locals, s->globals, word, 0 );
         }
     }
 
     if ( span_eq( cmd, "src" ) )
     {
-        var_t *src = env_get( &s->globals, span_lit( "src" ) ) ?:
-                     env_set( &s->globals, span_lit( "src" ) );
+        var_t *src = env_get( s->globals, span_lit( "src" ) ) ?:
+                     env_set( s->globals, span_lit( "src" ) );
         var_t *path = var_alloc( span_lit( "manifest-path" ) );
-        env_expand( path, &s->locals, &s->globals, args, 0 );
+        env_expand( path, &s->locals, s->globals, args, 0 );
         for ( value_t *val = path->list; val; val = val->next )
             load_manifest( s->nodes, src, val->data );
     }
@@ -137,7 +137,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
     {
         s->out_set = true;
         var_t *out = env_set( &s->locals, span_lit( "out" ) );
-        env_expand( out, &s->locals, &s->globals, args, 0 );
+        env_expand( out, &s->locals, s->globals, args, 0 );
         if ( out->list->next )
             rl_error( s, "out expanded into a list" );
     }
@@ -145,13 +145,13 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
     if ( span_eq( cmd, "add" ) || span_eq( cmd, "dep" ) )
     {
         span_t name = span_eq( cmd, "dep" ) ? span_lit( "dep" ) : fetch_word( &args );
-        var_t *var = env_get( &s->locals, name ) ?: env_get( &s->globals, name );
+        var_t *var = env_get( &s->locals, name ) ?: env_get( s->globals, name );
 
         if ( !var )
             rl_error( s, "cannot add to a non-existent variable %.*s", span_len( name ), name.str );
 
         value_t *new = var->last;
-        env_expand( var, &s->locals, &s->globals, args, 0 );
+        env_expand( var, &s->locals, s->globals, args, 0 );
         if ( !new )
             new = var->list;
 
@@ -168,13 +168,13 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
         if ( env_get( &s->templates, name ) )
             rl_error( s, "name '%.*s' is already used for a template", span_len( name ), name.str );
 
-        var_t *var = env_set( span_eq( cmd, "set" ) ? &s->globals : &s->locals, name );
+        var_t *var = env_set( span_eq( cmd, "set" ) ? s->globals : &s->locals, name );
 
         if ( span_eq( cmd, "set" ) )
             rl_set_position( s, name );
 
         if ( !span_empty( args ) )
-            env_expand( var, &s->locals, &s->globals, args, 0 );
+            env_expand( var, &s->locals, s->globals, args, 0 );
     }
 
     if ( span_eq( cmd, "use" ) )
@@ -228,7 +228,7 @@ void rl_statement( struct rl_state *s )
     span_t args = span_dup( s->reader.span );
     fileline_t pos = s->reader.pos;
 
-    if ( env_get( &s->globals, name ) )
+    if ( env_get( s->globals, name ) )
         rl_error( s, "name '%.*s' is already used for a variable", span_len( name ), name.str );
 
     if ( span_eq( cmd, "def" ) )
@@ -247,7 +247,7 @@ void rl_statement( struct rl_state *s )
     }
 
     iter = var_alloc( span_lit( "for-iter" ) );
-    env_expand( iter, &s->locals, &s->globals, args, 0 );
+    env_expand( iter, &s->locals, s->globals, args, 0 );
     value_t *val = iter->list;
 
     while ( val )
@@ -272,7 +272,7 @@ void load_rules( cb_tree *nodes, cb_tree *env, const char *file )
 {
     struct rl_state s;
 
-    cb_init( &s.globals );
+    s.globals = env;
     cb_init( &s.locals );
     cb_init( &s.templates );
     cb_init( &s.positions );
