@@ -1,0 +1,25 @@
+set cc /usr/bin/cc
+set cflags -g
+set ldflags
+
+src sources dirs gib.manifest
+
+out create build directories
+dep gib.manifest
+cmd /bin/mkdir -p $(dirs)
+
+out gib.wrapcc
+dep gib.bundle/wrapcc.c
+dep gib.bundle/reader.h
+dep gib.bundle/common.h
+cmd $(cc) $(cflags) -o $(out) $(srcdir)/gib.bundle/wrapcc.c
+
+out gib
+let in gib.bundle/main.c
+dep $(in)
+dep create build directories
+dep gib.wrapcc
+cmd gib.wrapcc $(cc) $(cflags) -o $(out) $(srcdir)/$(in)
+
+meta all
+dep gib
