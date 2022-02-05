@@ -115,8 +115,32 @@ void rl_stanza_clear( struct rl_state *s )
 
 void rl_stanza_end( struct rl_state *s )
 {
-    if ( s->out_set )
-        fprintf( stderr, "out: %s\n", env_get( &s->locals, span_lit( "out" ) )->list->data );
+    if ( s->out_set || s->meta_set )
+    {
+        if ( s->out_set && s->meta_set )
+            rl_error( s, "can't have both 'out' and 'meta' in the same stanza" );
+
+        span_t name = span_lit( env_get( &s->locals, span_lit( "out" ) )->list->data );
+        node_t *node = graph_add( s->nodes, name );
+
+        if ( !node )
+            rl_error( s, "duplicate output: %s", name.str );
+
+        if ( s->cmd_set )
+        {
+            node->cmd = env_get( &s->locals, span_lit( "cmd" ) )->list;
+            /* TODO take ownership! rl_stanza_clear will destroy the variable */
+        }
+
+        value_t *dep = env_get( &s->locals, span_lit( "dep" ) )->list;
+
+        for ( ; dep; dep = dep->next )
+        {
+            node_t *dep_n = graph_get( s->nodes, span_lit( dep->data ) );
+            assert( dep_n );
+        }
+    }
+
     rl_stanza_clear( s );
 };
 

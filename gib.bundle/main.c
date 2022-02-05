@@ -144,7 +144,7 @@ int main( int argc, const char *argv[] )
         s.running[ i ] = 0;
 
     var_t *jobs = env_get( &s.env, span_lit( "jobs" ) );
-    node_t *all = graph_get( &s.nodes, "all" );
+    node_t *all = graph_get( &s.nodes, span_lit( "all" ) );
 
     if ( !all )
         fprintf( stderr, "goal all does not exist\n" ), exit( 1 );
