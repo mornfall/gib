@@ -68,15 +68,13 @@ var_t *env_set( cb_tree *env, span_t name )
     return var;
 }
 
-void var_add( var_t *var, span_t str )
+void var_add_value( var_t *var, value_t *val )
 {
     if ( var->frozen )
         error( "cannot change frozen variable %s", var->name );
 
-    value_t *val = malloc( VSIZE( val, data ) + span_len( str ) + 1 );
     val->next = 0;
-    span_copy( val->data, str );
-    cb_insert( &var->set, val, VSIZE( val, data ), span_len( str ) );
+    cb_insert( &var->set, val, VSIZE( val, data ), -1 );
 
     if ( var->list )
     {
@@ -85,6 +83,13 @@ void var_add( var_t *var, span_t str )
     }
     else
         var->list = var->last = val;
+}
+
+void var_add( var_t *var, span_t str )
+{
+    value_t *val = malloc( VSIZE( val, data ) + span_len( str ) + 1 );
+    span_copy( val->data, str );
+    var_add_value( var, val );
 }
 
 void env_add( cb_tree *env, span_t name, span_t val )
