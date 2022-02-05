@@ -10,6 +10,8 @@ typedef struct job
     int pipe_fd;
     cb_tree blocking;
     struct job *next;
+    char *dyn_info;
+    int dyn_size;
     char name[];
 } job_t;
 
@@ -79,9 +81,19 @@ job_t *job_wanted( cb_tree *jobs, node_t *build, node_t *blocked )
 
 bool job_update( job_t *j )
 {
-    char buff[ 32 ];
-    bool done = read( j->pipe_fd, buff, 32 ) == 0;
-    if ( done )
+    char buff[ 1024 ];
+    int bytes = read( j->pipe_fd, buff, 1024 );
+    if ( bytes < 0 )
+        sys_error( "reading from status pipe of %s", j->name );
+
+    if ( bytes == 0 )
+    {
         close( j->pipe_fd );
-    return done;
+        return true;
+    }
+
+    j->dyn_info = realloc( j->dyn_info, j->dyn_size + bytes );
+    memcpy( j->dyn_info + j->dyn_size, buff, bytes );
+    j->dyn_size += bytes;
+    return false;
 }
