@@ -56,17 +56,23 @@ job_t *job_wanted( cb_tree *jobs, node_t *build, node_t *blocked )
 
     job_t *j = cb_find( jobs, name, name_len ).leaf;
 
-    if ( strcmp( j->name, build->name ) )
+    if ( !j || strcmp( j->name, build->name ) )
     {
         j = malloc( sizeof( job_t ) + name_len + 1 );
         strcpy( j->name, name );
         j->node = build;
         j->next = 0;
         build->changed = true;
+        cb_init( &j->blocking );
+        cb_insert( jobs, j, VSIZE( j, name ), -1 );
     }
 
-    cb_insert( &j->blocking, blocked, VSIZE( blocked, name ), -1 );
-    blocked->waiting ++;
+    if ( blocked )
+    {
+        cb_insert( &j->blocking, blocked, VSIZE( blocked, name ), -1 );
+        blocked->waiting ++;
+    }
+
     return j;
 }
 
