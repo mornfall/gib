@@ -33,6 +33,9 @@ typedef struct
 
 void job_queue( state_t *s, job_t *j )
 {
+    assert( !j->queued );
+    j->queued = true;
+
     if ( !s->job_next )
         s->job_next = j;
 

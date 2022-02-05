@@ -7,6 +7,7 @@ typedef struct job
 {
     node_t *node;
     pid_t pid;
+    bool queued;
     int pipe_fd;
     cb_tree blocking;
     struct job *next;
@@ -55,7 +56,6 @@ void job_fork( job_t *j, int dirfd )
 job_t *job_wanted( cb_tree *jobs, node_t *build, node_t *blocked )
 {
     span_t name = span_lit( build->name );
-
     job_t *j = cb_find( jobs, name ).leaf;
 
     if ( !j || strcmp( j->name, build->name ) )
@@ -64,6 +64,7 @@ job_t *job_wanted( cb_tree *jobs, node_t *build, node_t *blocked )
         span_copy( j->name, name );
         j->node = build;
         j->next = 0;
+        j->queued = 0;
         build->changed = true;
         cb_init( &j->blocking );
         cb_insert( jobs, j, VSIZE( j, name ), -1 );
