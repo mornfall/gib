@@ -184,7 +184,7 @@ void write_stamps( cb_tree *nodes, const char *path )
         if ( n->type != out_node )
             continue;
 
-        writer_print( &w, "%llx ", n->stamp );
+        writer_print( &w, "%08llx ", n->stamp );
         writer_append( &w, name );
         writer_append( &w, span_lit( "\n" ) );
     }
