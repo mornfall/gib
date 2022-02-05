@@ -100,6 +100,7 @@ void rl_stanza_end( struct rl_state *s )
         {
             node_t *dep_n = graph_get( s->nodes, span_lit( dep->data ) );
             assert( dep_n );
+            cb_insert( &node->deps, dep_n, VSIZE( dep_n, name ), strlen( dep->data ) );
         }
     }
 
