@@ -124,5 +124,5 @@ void env_expand( var_t *var, cb_tree *local, cb_tree *global, span_t str, const 
 
     return;
 err:
-    die( "invalid variable reference in %.*s", span_len( str ), str );
+    error( "invalid variable reference in %.*s", span_len( str ), str );
 }

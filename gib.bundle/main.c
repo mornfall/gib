@@ -75,7 +75,7 @@ void main_loop( state_t *s )
             FD_SET( i, &ready );
 
     if ( select( MAX_FD, &ready, 0, 0, 0 ) == -1 )
-        die( "select" );
+        sys_error( "select" );
 
     for ( int fd = 0; fd < MAX_FD; ++ fd )
         if ( FD_ISSET( fd, &ready ) )
@@ -124,15 +124,15 @@ int main( int argc, const char *argv[] )
 
     if ( asprintf( &s.outdir, "%s/build.default",
                    outdir && outdir->list ? outdir->list->data : s.srcdir ) < 0 )
-        die( "asprintf" );
+        sys_error( "asprintf" );
 
     char *path_dyn, *path_stamp;
 
     if ( asprintf( &path_dyn, "%s/dynamic.gib", s.outdir ) < 0 )
-        die( "asprintf" );
+        sys_error( "asprintf" );
 
     if ( asprintf( &path_stamp, "%s/stamps.gib", s.outdir ) < 0 )
-        die( "asprintf" );
+        sys_error( "asprintf" );
 
     load_dynamic( &s.nodes, path_dyn );
     load_stamps( &s.nodes, path_stamp );

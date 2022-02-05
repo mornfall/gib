@@ -18,7 +18,7 @@ void job_fork( job_t *j )
     int fds[ 2 ];
 
     if ( socketpair( AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, fds ) )
-        die( "socketpair %s", j->name );
+        sys_error( "socketpair %s", j->name );
 
     value_t *cmd = j->node->cmd;
     j->pipe_fd = fds[ 0 ];
@@ -38,11 +38,11 @@ void job_fork( job_t *j )
 
         dup2( fds[ 1 ], 3 );
         execv( cmd->data, argv );
-        die( "execv %s (job %s):", cmd->data, j->name );
+        sys_error( "execv %s (job %s):", cmd->data, j->name );
     }
 
     if ( j->pid == -1 )
-        die( "fork %s [%s]:", j->name, cmd->data );
+        sys_error( "fork %s [%s]:", j->name, cmd->data );
 }
 
 job_t *job_wanted( cb_tree *jobs, node_t *build, node_t *blocked )
