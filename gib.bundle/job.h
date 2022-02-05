@@ -54,15 +54,14 @@ void job_fork( job_t *j, int dirfd )
 
 job_t *job_wanted( cb_tree *jobs, node_t *build, node_t *blocked )
 {
-    char *name = build->name;
-    int name_len = strlen( name );
+    span_t name = span_lit( build->name );
 
-    job_t *j = cb_find( jobs, name, name_len ).leaf;
+    job_t *j = cb_find( jobs, name ).leaf;
 
     if ( !j || strcmp( j->name, build->name ) )
     {
-        j = malloc( sizeof( job_t ) + name_len + 1 );
-        strcpy( j->name, name );
+        j = malloc( VSIZE( j, name ) + span_len( name ) + 1 );
+        span_copy( j->name, name );
         j->node = build;
         j->next = 0;
         build->changed = true;

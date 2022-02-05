@@ -1,6 +1,7 @@
 #pragma once
-#include <stdio.h>
+#include "span.h"
 
+#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
@@ -131,17 +132,17 @@ bool cb_dir( uint8_t c, uint8_t mask )
     return ( 1 + ( mask | c ) ) >> 8;
 }
 
-bool cb_bit( cb_node *n, const uint8_t *k, size_t len )
+bool cb_bit( cb_node *n, span_t k )
 {
     uint8_t c = 0;
 
-    if ( n->byte < len )
-        c = k[ n->byte ];
+    if ( n->byte < span_len( k ) )
+        c = k.str[ n->byte ];
 
     return cb_dir( c, n->mask );
 }
 
-cb_result cb_find( cb_tree *t, const uint8_t *k, size_t len )
+cb_result cb_find( cb_tree *t, span_t k )
 {
     assert( t );
     cb_result r = { t->root, t->vsize };
@@ -150,7 +151,7 @@ cb_result cb_find( cb_tree *t, const uint8_t *k, size_t len )
     if ( n )
         while ( r.vsize == CB_VSIZE_INTERNAL )
         {
-            bool dir = cb_bit( n, k, len );
+            bool dir = cb_bit( n, k );
             r.leaf = n->child[ dir ];
             r.vsize = n->vsize[ dir ];
             n = n->child[ dir ];
@@ -159,10 +160,10 @@ cb_result cb_find( cb_tree *t, const uint8_t *k, size_t len )
     return r;
 }
 
-int cb_contains( cb_tree *t, const uint8_t *k, size_t len )
+int cb_contains( cb_tree *t, span_t k )
 {
-    cb_result r = cb_find( t, k, len );
-    return r.vsize != CB_VSIZE_INTERNAL && !strcmp( r.leaf + r.vsize, k );
+    cb_result r = cb_find( t, k );
+    return r.vsize != CB_VSIZE_INTERNAL && span_eq( k, r.leaf + r.vsize );
 }
 
 void cb_init( cb_tree *t )
@@ -207,7 +208,7 @@ bool cb_insert_at( cb_tree *t, cb_result r, int byte, uint8_t mask, void *leaf,
              next->byte == byte && next->mask > mask )
             break;
 
-        const int dir = cb_bit( next, new_k, len );
+        const int dir = cb_bit( next, span_mk( new_k, new_k + len ) );
         s_node  = ( cb_node ** ) next->child + dir;
         s_vsize = next->vsize + dir;
     }
@@ -232,7 +233,7 @@ bool cb_insert( cb_tree *t, void *leaf, uint16_t vsize, int len )
     if ( len < 0 )
         len = strlen( new_k );
 
-    cb_result n = cb_find( t, new_k, len );
+    cb_result n = cb_find( t, span_mk( new_k, new_k + len ) );
     const uint8_t *old_k = n.leaf + n.vsize;
     int i = 0;
 

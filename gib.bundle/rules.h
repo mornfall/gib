@@ -194,8 +194,8 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
         if ( !var )
             rl_error( s, "undefined template %.*s\n", span_len( name ), name.str );
 
-        assert( cb_contains( &s->positions, name.str, span_len( name ) ) );
-        fileline_t *pos = cb_find( &s->positions, name.str, span_len( name ) ).leaf;
+        assert( cb_contains( &s->positions, name ) );
+        fileline_t *pos = cb_find( &s->positions, name ).leaf;
         rl_replay( s, var, *pos );
     }
 

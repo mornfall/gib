@@ -20,7 +20,7 @@ typedef struct
 
 var_t *env_get( cb_tree *env, span_t name )
 {
-    var_t *var = cb_find( env, name.str, span_len( name ) ).leaf;
+    var_t *var = cb_find( env, name ).leaf;
 
     if ( var && span_eq( name, var->name ) )
         return var;

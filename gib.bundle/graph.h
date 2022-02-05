@@ -22,7 +22,7 @@ typedef struct node
 
 node_t *graph_get( cb_tree *t, span_t name )
 {
-    node_t *n = cb_find( t, name.str, span_len( name ) ).leaf;
+    node_t *n = cb_find( t, name ).leaf;
 
     if ( n && span_eq( name, n->name ) )
         return n;
