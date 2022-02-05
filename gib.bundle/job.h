@@ -36,6 +36,8 @@ void job_fork( job_t *j )
             n = n->next;
         }
 
+        argv[ i ] = 0;
+
         dup2( fds[ 1 ], 3 );
         execv( cmd->data, argv );
         sys_error( "execv %s (job %s):", cmd->data, j->name );
