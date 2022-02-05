@@ -135,7 +135,12 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
         env_expand( path, &s->locals, s->globals, args, 0 );
 
         for ( value_t *val = path->list; val; val = val->next )
+        {
+            node_t *manifest = graph_add( s->nodes, span_lit( val->data ) );
+            manifest->type = src_node;
+            graph_stat( manifest );
             load_manifest( s->nodes, src, dir, val->data );
+        }
     }
 
     if ( span_eq( cmd, "out" ) )

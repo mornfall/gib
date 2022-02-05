@@ -33,6 +33,13 @@ node_t *graph_get( cb_tree *t, span_t name )
         return 0;
 }
 
+void graph_stat( node_t *n )
+{
+    struct stat st;
+    if ( stat( n->name, &st ) != -1 )
+        n->stamp = n->new_stamp = st.st_mtime;
+}
+
 node_t *graph_put( cb_tree *t, node_t *node, int len )
 {
     cb_init( &node->deps );
