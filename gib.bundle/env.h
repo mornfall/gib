@@ -132,7 +132,12 @@ void env_expand( var_t *var, cb_tree *local, cb_tree *global, span_t str, const 
 
     span_t prefix = span_mk( str.str, ref );
     span_t ref_name = span_mk( ref + 2, ref_end );
+    span_t ref_spec = ref_name;
     span_t suffix = span_mk( ref_end + 1, str.end );
+
+    const char *ref_ptr = ref_name.str;
+    for ( ; ref_ptr < ref_name.end && *ref_ptr != ':' && *ref_ptr != '!'; ++ ref_ptr );
+    ref_name.end = ref_spec.str = ref_ptr;
 
     var_t *ref_var = env_get( local, ref_name ) ?: env_get( global, ref_name );
 
