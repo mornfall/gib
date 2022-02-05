@@ -228,15 +228,23 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
             rl_error( s, "out expanded into a list" );
     }
 
-    if ( span_eq( cmd, "add" ) )
+    if ( span_eq( cmd, "add" ) || span_eq( cmd, "dep" ) )
     {
-        span_t name = fetch_word( &args );
+        span_t name = span_eq( cmd, "dep" ) ? span_lit( "dep" ) : fetch_word( &args );
         var_t *var = env_get( &s->locals, name ) ?: env_get( &s->globals, name );
 
         if ( !var )
             rl_error( s, "cannot add to a non-existent variable %.*s", span_len( name ), name.str );
 
+        value_t *new = var->last;
         env_expand( var, &s->locals, &s->globals, args, 0 );
+        if ( !new )
+            new = var->list;
+
+        if ( span_eq( cmd, "dep" ) )
+            for ( ; new; new = new->next )
+                if ( !graph_get( s->nodes, span_lit( new->data ) ) )
+                    rl_error( s, "dep: node for '%s' does not exist", new->data );
     }
 
     if ( span_eq( cmd, "set" ) || span_eq( cmd, "let" ) )
