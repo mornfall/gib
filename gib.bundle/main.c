@@ -33,7 +33,9 @@ typedef struct
 
 void job_queue( state_t *s, job_t *j )
 {
-    assert( !j->queued );
+    if ( j->queued )
+        return;
+
     j->queued = true;
 
     if ( !s->job_next )
@@ -173,10 +175,16 @@ void create_jobs( state_t *s, node_t *goal )
 
         if ( out && out->new_stamp < dep->stamp )
             out->new_stamp = dep->stamp;
-
-        if ( dep_out && dep_out->stamp != dep_out->new_stamp && !dep_out->failed )
-            job_queue( s, job_wanted( &s->jobs, dep_out, goal ) );
     }
+
+    if ( out && out->new_stamp != out->stamp )
+        for ( cb_iterator i = cb_begin( &goal->deps ); !cb_end( &i ); cb_next( &i ) )
+        {
+            node_t *dep = cb_get( &i );
+            node_t *dep_out = dep->type == out_node ? dep : 0;
+            if ( dep_out && dep_out->stamp != dep_out->new_stamp && !dep_out->failed )
+                job_queue( s, job_wanted( &s->jobs, dep_out, goal ) );
+        }
 }
 
 int main( int argc, const char *argv[] )
