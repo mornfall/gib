@@ -9,10 +9,10 @@ HDR = gib.bundle/span.h \
       gib.bundle/outdb.h \
       gib.bundle/rules.h
 
-$(.TARGETS) $(MAKECMDGOALS): .gib.bin
+all $(.TARGETS) $(MAKECMDGOALS): .gib.bin
 	@./.gib.bin $@
 
 .gib.bin: gib.bundle/main.c $(HDR)
 	@cc -g -o .gib.bin gib.bundle/main.c
 
-.PHONY: $(.TARGETS) $(MAKECMDGOALS)
+.PHONY: $(.TARGETS) $(MAKECMDGOALS) all
