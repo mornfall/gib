@@ -83,7 +83,7 @@ void rl_stanza_end( struct rl_state *s )
 
         span_t name = span_lit( env_get( &s->locals, span_lit( "out" ) )->list->data );
         node_t *node = graph_add( s->nodes, name );
-        node->type = out_node;
+        node->type = s->meta_set ? meta_node : out_node;
 
         if ( !node )
             rl_error( s, "duplicate output: %s", name.str );
@@ -143,9 +143,9 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
         }
     }
 
-    if ( span_eq( cmd, "out" ) )
+    if ( span_eq( cmd, "out" ) || span_eq( cmd, "meta" ) )
     {
-        s->out_set = true;
+        if ( span_eq( cmd, "out" ) ) s->out_set = true; else s->meta_set = true;
         var_t *out = env_set( &s->locals, span_lit( "out" ) );
         env_expand( out, &s->locals, s->globals, args, 0 );
         if ( out->list->next )
