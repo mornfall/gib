@@ -39,7 +39,6 @@ void job_queue( state_t *s, job_t *j )
     fprintf( s->debug, "queue: %s [%llx → %llx]\n", j->name, j->node->stamp, j->node->new_stamp );
     j->queued = true;
     ++ s->queued_count;
-
     if ( !s->job_next )
         s->job_next = j;
 
@@ -160,10 +159,6 @@ void main_loop( state_t *s )
                 if ( !job_start( s ) )
                     break;
     }
-}
-
-void load_graph( state_t *s )
-{
 }
 
 void create_jobs( state_t *s, node_t *goal )
