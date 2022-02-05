@@ -13,7 +13,7 @@ void load_manifest( cb_tree *nodes, var_t *src, var_t *dirs, const char *file )
     int dirfd = dup( rootfd );
     span_t dir = span_dup( span_lit( "" ) );
 
-    while ( fetch_line( &r ) )
+    while ( read_line( &r ) )
     {
         if ( span_empty( r.span ) ) /* skip empty lines */
             continue;

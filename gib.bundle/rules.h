@@ -272,7 +272,7 @@ void rl_statement( struct rl_state *s )
     var_t *cmds = span_eq( cmd, "def" ) ? env_set( &s->templates, name )
                                         : var_alloc( span_lit( "for-body" ) );
 
-    while ( fetch_line( &s->reader ) && !span_empty( s->reader.span ) )
+    while ( read_line( &s->reader ) && !span_empty( s->reader.span ) )
         var_add( cmds, s->reader.span );
 
     if ( span_eq( cmd, "def" ) )
@@ -321,7 +321,7 @@ void load_rules( cb_tree *nodes, cb_tree *env, const char *file )
 
     rl_stanza_clear( &s );
 
-    while ( fetch_line( &s.reader ) )
+    while ( read_line( &s.reader ) )
     {
         if ( *s.reader.span.str == '#' )
             continue;

@@ -125,7 +125,7 @@ void load_dynamic( cb_tree *nodes, cb_tree *dyn, const char *path )
 
     while ( true )
     {
-        bool done = !fetch_line( &r );
+        bool done = !read_line( &r );
 
         if ( span_empty( r.span ) && n )
         {
@@ -204,7 +204,7 @@ void load_stamps( cb_tree *nodes, const char *file )
             sys_error( "opening %s", file );
     }
 
-    while ( fetch_line( &r ) )
+    while ( read_line( &r ) )
     {
         span_t path = r.span;
         span_t stamp = fetch_word( &path );

@@ -60,7 +60,7 @@ bool shift_buffer( reader_t *r )
     return true;
 }
 
-bool fetch_line( reader_t *r )
+bool read_line( reader_t *r )
 {
     r->span.str = r->span.end;
     r->span.end = r->span.str;
