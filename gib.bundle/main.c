@@ -13,7 +13,6 @@ static volatile sig_atomic_t _signalled = 0;
 void sighandler( int sig )
 {
     _signalled = sig;
-    signal( sig, SIG_DFL );
 }
 
 typedef struct
