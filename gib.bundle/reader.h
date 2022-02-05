@@ -329,7 +329,7 @@ void rl_statement( struct rl_state *s )
     while ( fetch_line( &s->reader ) && !span_empty( s->reader.span ) )
         var_add( cmds, s->reader.span );
 
-    if ( !span_eq( cmd, "for" ) )
+    if ( span_eq( cmd, "def" ) )
         goto out;
 
     var_t *iter = var_alloc( span_lit( "for-iter" ) );
