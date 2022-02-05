@@ -1,4 +1,4 @@
-HDR = gib/critbit.h gib/common.h gib/env.h gib/graph.h gib/job.h gib/reader.h
+HDR = gib/critbit.h gib/span.h gib/common.h gib/env.h gib/graph.h gib/job.h gib/reader.h
 
 all: .aux/gib
 	./.aux/gib all
