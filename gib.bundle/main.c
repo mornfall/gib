@@ -188,7 +188,7 @@ int main( int argc, const char *argv[] )
     var_t *srcdir = env_set( &s.env, span_lit( "srcdir" ) );
     var_add( srcdir, span_lit( s.srcdir ) );
 
-    load_rules( &s.nodes, &s.env, "gibfile" );
+    load_rules( &s.nodes, &s.env, "gib.file" );
     var_t *var_outpath = env_get( &s.env, span_lit( "outpath" ) );
     const char *outpath = var_outpath && var_outpath->list ? var_outpath->list->data : 0;
 
