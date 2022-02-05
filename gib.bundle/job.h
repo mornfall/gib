@@ -42,6 +42,29 @@ void job_fork( job_t *j, int dirfd )
 
         fchdir( dirfd );
         dup2( fds[ 1 ], 3 );
+        mkdir( "gib.log", 0777 );
+
+        char path[ 1024 ];
+        sprintf( path, "gib.log/%s.txt", j->name );
+
+        for ( char *c = path + 8; *c; ++c )
+            if ( *c == '/' || *c == ' ' )
+                *c = '_';
+
+        unlink( path );
+        int logfd = open( path, O_CREAT | O_TRUNC | O_WRONLY | O_EXCL, 0666 );
+        int nullfd = open( "/dev/null", O_RDONLY );
+
+        if ( logfd < 0 )
+            sys_error( "opening logfile %s", path );
+
+        if ( nullfd < 0 )
+            sys_error( "opening /dev/null" );
+
+        dup2( nullfd, 0 );
+        dup2( logfd, 1 );
+        dup2( logfd, 2 );
+
         execv( cmd->data, argv );
         sys_error( "execv %s (job %s):", cmd->data, j->name );
     }
