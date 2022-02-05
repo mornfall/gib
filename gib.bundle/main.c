@@ -102,16 +102,31 @@ void job_cleanup( state_t *s, int fd )
 
     if ( WIFEXITED( status ) && WEXITSTATUS( status ) == 0 )
     {
-        fprintf( stderr, "\033[J\033[32mok\033[0m %s\n", j->name );
         n->stamp = n->new_stamp;
-        ++ s->ok_count;
 
         if ( j->dyn_info )
         {
             dyn_t *di = malloc( VSIZE( di, name ) + strlen( j->name ) + 1 );
             strcpy( di->name, j->name );
-            di->data = span_mk( j->dyn_info, j->dyn_info + j->dyn_size );
+            span_t data = di->data = span_mk( j->dyn_info, j->dyn_info + j->dyn_size );
             cb_insert( &s->dyn, di, VSIZE( di, name ), -1 );
+
+            while ( !span_empty( data ) )
+            {
+                span_t line = fetch_line( &data );
+                if ( span_eq( line, "unchanged" ) )
+                {
+                    n->changed = false;
+                    fprintf( stderr, "\033[J\033[33m--\033[0m %s\n", n->name );
+                    break;
+                }
+            }
+        }
+
+        if ( n->changed )
+        {
+            fprintf( stderr, "\033[J\033[32mok\033[0m %s\n", j->name );
+            ++ s->ok_count;
         }
     }
     else
