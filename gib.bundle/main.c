@@ -8,7 +8,7 @@
 #include <ctype.h>
 #define MAX_FD 64
 
-static sig_atomic_t _signalled = 0;
+static volatile sig_atomic_t _signalled = 0;
 
 void sighandler( int sig )
 {
