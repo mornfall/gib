@@ -223,6 +223,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
     {
         s->out_set = true;
         var_t *out = env_set( &s->locals, span_lit( "out" ) );
+        env_set( &s->locals, span_lit( "dep" ) );
         env_expand( out, &s->locals, &s->globals, args, 0 );
         if ( out->list->next )
             rl_error( s, "out expanded into a list" );
