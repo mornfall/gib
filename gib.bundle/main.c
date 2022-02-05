@@ -265,7 +265,20 @@ int main( int argc, const char *argv[] )
     if ( s.outdir_fd < 0 )
         sys_error( "opening output directory %s", s.outdir );
 
-    while ( main_loop( &s ) );
+    time_t started = time( NULL );
+    time_t elapsed = 0;
+
+    while ( main_loop( &s ) )
+    {
+        elapsed = time( NULL ) - started;
+        fprintf( stderr, "%d/%d running, %d queued, %lld:%02lld elapsed\r",
+                 s.running_count, s.running_max, s.queued_count,
+                 elapsed / 60, elapsed % 60 );
+    }
+
+    elapsed = time( NULL ) - started;
+    fprintf( stderr, "build finished: %d ok, %d failed, %lld:%02lld elapsed\n",
+             s.ok_count, s.failed_count, elapsed / 60, elapsed % 60 );
 
     write_stamps( &s.nodes, path_stamp );
     // write_dynamic( &s.nodes );
