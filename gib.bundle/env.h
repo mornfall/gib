@@ -42,6 +42,17 @@ var_t *var_alloc( span_t name )
     return var;
 }
 
+void var_free( var_t *var )
+{
+    if ( !var )
+        return;
+
+    for ( value_t *v = var->list, *next = 0; v; v = next )
+        next = v->next, free( v );
+
+    free( var );
+}
+
 var_t *env_set( cb_tree *env, span_t name )
 {
     var_t *var = env_get( env, name );
