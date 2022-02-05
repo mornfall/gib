@@ -29,6 +29,7 @@ typedef struct
 
     int failed_count;
     int ok_count;
+    int todo_count;
     int queued_count;
     int running_count;
     int running_max;
@@ -96,6 +97,7 @@ void job_cleanup( state_t *s, int fd )
     }
 
     s->running_count --;
+    s->todo_count --;
 
     for ( cb_iterator i = cb_begin( &j->node->blocking ); !cb_end( &i ); cb_next( &i ) )
     {
@@ -204,6 +206,8 @@ void create_jobs( state_t *s, node_t *goal )
             }
         }
 
+        ++ s->todo_count;
+
         if ( !out->waiting ) /* can run right away */
             job_queue( s, job_add( &s->jobs, out ) );
     }
@@ -265,6 +269,7 @@ int main( int argc, const char *argv[] )
     s.ok_count = 0;
     s.running_count = 0;
     s.queued_count = 0;
+    s.todo_count = 0;
     s.running_max = jobs && jobs->list ? atoi( jobs->list->data ) : 4;
 
     mkdir( s.outdir, 0777 ); /* ignore errors */
@@ -283,8 +288,8 @@ int main( int argc, const char *argv[] )
     while ( main_loop( &s ) )
     {
         elapsed = time( NULL ) - started;
-        fprintf( stderr, "%d/%d running, %d queued, %lld:%02lld elapsed\r",
-                 s.running_count, s.running_max, s.queued_count,
+        fprintf( stderr, "%d/%d running, %d queued, %d todo, %lld:%02lld elapsed\r",
+                 s.running_count, s.running_max, s.queued_count, s.todo_count,
                  elapsed / 60, elapsed % 60 );
     }
 
