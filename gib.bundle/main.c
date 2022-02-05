@@ -27,6 +27,7 @@ typedef struct
     job_t *job_next, *job_last;
     job_t *running[ MAX_FD ];
 
+    int queued_count;
     int running_count;
     int running_max;
 } state_t;
@@ -37,6 +38,7 @@ void job_queue( state_t *s, job_t *j )
 
     fprintf( s->debug, "queue: %s [%llx → %llx]\n", j->name, j->node->stamp, j->node->new_stamp );
     j->queued = true;
+    ++ s->queued_count;
 
     if ( !s->job_next )
         s->job_next = j;
@@ -56,6 +58,7 @@ bool job_start( state_t *s )
     s->job_next = j->next;
     job_fork( j, s->outdir_fd );
     s->running_count ++;
+    s->queued_count --;
 
     assert( j->pipe_fd < MAX_FD );
     s->running[ j->pipe_fd ] = j;
@@ -131,7 +134,8 @@ void main_loop( state_t *s )
             if ( !job_start( s ) )
                 break;
 
-        fprintf( stderr, "running: %d/%d\r", s->running_count, s->running_max );
+        fprintf( stderr, "running: %d/%d, queued: %d\r",
+                 s->running_count, s->running_max, s->queued_count );
 
         if ( _signalled || ( !s->running_count && !s->job_next ) )
             return;
@@ -250,6 +254,7 @@ int main( int argc, const char *argv[] )
         fprintf( stderr, "goal all does not exist\n" ), exit( 1 );
 
     s.running_count = 0;
+    s.queued_count = 0;
     s.running_max = jobs && jobs->list ? atoi( jobs->list->data ) : 4;
 
     create_jobs( &s, all ); /* TODO */
