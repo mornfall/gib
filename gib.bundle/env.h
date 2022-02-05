@@ -59,6 +59,9 @@ var_t *env_set( cb_tree *env, span_t name )
 
 void var_add( var_t *var, span_t str )
 {
+    if ( var->frozen )
+        error( "cannot change frozen variable %s", var->name );
+
     value_t *val = malloc( VSIZE( val, data ) + span_len( str ) + 1 );
     val->next = 0;
     span_copy( val->data, str );
@@ -109,6 +112,8 @@ void env_expand( var_t *var, cb_tree *local, cb_tree *global, span_t str, const 
 
     if ( !ref_var )
         goto err;
+
+    ref_var->frozen = true;
 
     for ( value_t *val = ref_var->list; val; val = val->next )
     {
