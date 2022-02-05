@@ -1,18 +1,93 @@
 #pragma once
 #include "reader.h"
+#include "graph.h"
 
-void load_dynamic( cb_tree *nodes, const char *path )
-{}
+typedef struct
+{
+    int fd;
+    int ptr;
+    const char *file;
+    char *tmp;
+    char buffer[ BUFFER ];
+} writer_t;
+
+bool writer_flush( writer_t *w )
+{
+    int wrote = write( w->fd, w->buffer, w->ptr );
+    if ( wrote < 0 )
+        sys_error( "writing %s", w->tmp );
+    w->ptr -= wrote;
+    memmove( w->buffer, w->buffer + wrote, w->ptr );
+    return w->ptr > 0;
+}
+
+int writer_print( writer_t *w, const char *fmt, ... )
+{
+    va_list ap;
+
+    while ( true )
+    {
+        va_start( ap, fmt );
+        int need = vsnprintf( w->buffer + w->ptr, BUFFER - w->ptr, fmt, ap );
+        va_end( ap );
+
+        if ( need < 0 )
+            sys_error( "vsnprintf" );
+
+        if ( need >= BUFFER - w->ptr )
+            writer_flush( w );
+        else
+            return w->ptr += need, need;
+    }
+}
+
+void writer_append( writer_t *w, span_t span )
+{
+    if ( span_len( span ) >= BUFFER )
+    {
+        while ( writer_flush( w ) );
+        int bytes = write( w->fd, span.str, span_len( span ) );
+        if ( bytes < 0 )
+            sys_error( "writing %s", w->tmp );
+        span.str += bytes;
+    }
+    else
+    {
+        while ( span_len( span ) > BUFFER - w->ptr )
+            writer_flush( w );
+
+        span_copy( w->buffer + w->ptr, span );
+        w->ptr += span_len( span );
+    }
+}
+
+void writer_open( writer_t *w, const char *path )
+{
+    if ( asprintf( &w->tmp, "%s.%d", path, getpid() ) < 0 )
+        sys_error( "asprintf" );
+
+    w->file = path;
+    w->ptr = 0;
+    w->fd = open( w->tmp, O_CREAT | O_WRONLY | O_TRUNC | O_EXCL, 0666 );
+
+    if ( w->fd < 0 )
+        sys_error( "creating %s", w->tmp );
+}
+
+void writer_close( writer_t *w )
+{
+    while ( writer_flush( w ) );
+
+    if ( rename( w->tmp, w->file ) == -1 )
+        sys_error( "renaming %s to %s", w->tmp, w->file );
+    close( w->fd );
+    free( w->tmp );
+}
 
 void write_stamps( cb_tree *nodes, const char *path )
 {
-    char buffer[ BUFFER ];
-    int ptr = 0;
-
-    /* FIXME write new + rename */
-    int fd = open( path, O_CREAT | O_WRONLY | O_TRUNC, 0666 );
-    if ( fd < 0 )
-        sys_error( "creating %s", path );
+    writer_t w;
+    writer_open( &w, path );
 
     for ( cb_iterator i = cb_begin( nodes ); !cb_end( &i ); cb_next( &i ) )
     {
@@ -22,39 +97,12 @@ void write_stamps( cb_tree *nodes, const char *path )
         if ( n->type != out_node )
             continue;
 
-        while ( true )
-        {
-            int need = snprintf( buffer + ptr, BUFFER - ptr, "%llx ", n->stamp );
-
-            if ( need + span_len( name ) < BUFFER - ptr )
-            {
-                ptr += need;
-                break;
-            }
-
-            int wrote = write( fd, buffer, ptr );
-            if ( wrote < 0 )
-                sys_error( "writing %s", path );
-            ptr -= wrote;
-            memmove( buffer, buffer + wrote, ptr );
-        }
-
-        memcpy( buffer + ptr, name.str, name.end - name.str );
-        ptr += span_len( name );
-        buffer[ ptr++ ] = '\n';
+        writer_print( &w, "%llx ", n->stamp );
+        writer_append( &w, name );
+        writer_append( &w, span_lit( "\n" ) );
     }
 
-    int wptr = 0;
-
-    while ( wptr < ptr )
-    {
-        int wrote = write( fd, buffer + wptr, ptr - wptr );
-        if ( wrote < 0 )
-            sys_error( "writing %s", path );
-        wptr += wrote;
-    }
-
-    close( fd );
+    writer_close( &w );
 }
 
 void load_stamps( cb_tree *nodes, const char *file )
