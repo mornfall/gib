@@ -48,6 +48,8 @@ bool job_start( state_t *s )
     return true;
 }
 
+void create_jobs( state_t *s, node_t *goal );
+
 void job_cleanup( state_t *s, int fd )
 {
     job_t *j = s->running[ fd ];
@@ -65,12 +67,20 @@ void job_cleanup( state_t *s, int fd )
         fprintf( stderr, "%-*sno\n", 75, j->name );
 
     s->running_count --;
+    n->stamp = n->new_stamp;
+
     for ( cb_iterator i = cb_begin( &j->blocking ); !cb_end( &i ); cb_next( &i ) )
     {
-        job_t *b = cb_get( &i );
+        node_t *b = cb_get( &i );
 
-        if ( --b->node->waiting )
+        if ( -- b->waiting )
             continue;
+
+        b->visited = false;
+        create_jobs( s, b );
+
+        if ( !b->waiting && b->stamp != b->new_stamp )
+            job_queue( s, job_wanted( &s->jobs, b, 0 ) );
     }
 }
 
