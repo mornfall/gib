@@ -43,6 +43,8 @@ void job_fork( job_t *j )
         sys_error( "execv %s (job %s):", cmd->data, j->name );
     }
 
+    close( fds[ 1 ] );
+
     if ( j->pid == -1 )
         sys_error( "fork %s [%s]:", j->name, cmd->data );
 }
