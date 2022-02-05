@@ -27,6 +27,8 @@ typedef struct
     job_t *job_next, *job_last;
     job_t *running[ MAX_FD ];
 
+    int failed_count;
+    int ok_count;
     int queued_count;
     int running_count;
     int running_max;
@@ -84,10 +86,12 @@ void job_cleanup( state_t *s, int fd )
     {
         fprintf( stderr, "%-*sok\n", 75, j->name );
         n->stamp = n->new_stamp;
+        ++ s->ok_count;
     }
     else
     {
         fprintf( stderr, "%-*sno\n", 75, j->name );
+        ++ s->failed_count;
         n->failed = true;
     }
 
@@ -257,6 +261,8 @@ int main( int argc, const char *argv[] )
     if ( !all )
         fprintf( stderr, "goal all does not exist\n" ), exit( 1 );
 
+    s.failed_count = 0;
+    s.ok_count = 0;
     s.running_count = 0;
     s.queued_count = 0;
     s.running_max = jobs && jobs->list ? atoi( jobs->list->data ) : 4;
