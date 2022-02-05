@@ -125,12 +125,17 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
 
     if ( span_eq( cmd, "src" ) )
     {
-        var_t *src = env_get( s->globals, span_lit( "src" ) ) ?:
-                     env_set( s->globals, span_lit( "src" ) );
+        span_t src_name = fetch_word( &args );
+        span_t dir_name = fetch_word( &args );
+
+        var_t *src = env_get( s->globals, src_name ) ?: env_set( s->globals, src_name );
+        var_t *dir = env_get( s->globals, dir_name ) ?: env_set( s->globals, dir_name );
+
         var_t *path = var_alloc( span_lit( "manifest-path" ) );
         env_expand( path, &s->locals, s->globals, args, 0 );
+
         for ( value_t *val = path->list; val; val = val->next )
-            load_manifest( s->nodes, src, val->data );
+            load_manifest( s->nodes, src, dir, val->data );
     }
 
     if ( span_eq( cmd, "out" ) )

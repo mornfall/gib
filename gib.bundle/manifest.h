@@ -2,7 +2,7 @@
 #include "reader.h"
 #include <sys/stat.h>
 
-void load_manifest( cb_tree *nodes, var_t *src, const char *file )
+void load_manifest( cb_tree *nodes, var_t *src, var_t *dirs, const char *file )
 {
     reader_t r;
 
@@ -31,6 +31,7 @@ void load_manifest( cb_tree *nodes, var_t *src, const char *file )
             dir = span_dup( path );
             if ( ( dirfd = open( dir.str, O_DIRECTORY | O_RDONLY ) ) == -1 )
                 sys_error( "%s:%d: opening %s", r.pos.file, r.pos.line, dir );
+            var_add( dirs, dir );
         }
         else
         {
