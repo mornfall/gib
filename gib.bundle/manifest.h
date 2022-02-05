@@ -15,6 +15,9 @@ void load_manifest( cb_tree *nodes, var_t *src, const char *file )
 
     while ( fetch_line( &r ) )
     {
+        if ( span_empty( r.span ) ) /* skip empty lines */
+            continue;
+
         span_t path = r.span;
         span_t op = fetch_word( &path );
 
