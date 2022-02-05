@@ -83,11 +83,11 @@ void rl_stanza_end( struct rl_state *s )
 
         span_t name = span_lit( env_get( &s->locals, span_lit( "out" ) )->list->data );
         node_t *node = graph_add( s->nodes, name );
-        node->type = s->meta_set ? meta_node : out_node;
 
         if ( !node )
             rl_error( s, "duplicate output: %s", name.str );
 
+        node->type = s->meta_set ? meta_node : out_node;
         if ( s->cmd_set )
         {
             node->cmd = env_get( &s->locals, span_lit( "cmd" ) )->list;
