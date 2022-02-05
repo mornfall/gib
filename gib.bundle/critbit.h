@@ -39,6 +39,21 @@ typedef struct
     void **stack;
 } cb_iterator;
 
+bool cb_dir( uint8_t c, uint8_t mask )
+{
+    return ( 1 + ( mask | c ) ) >> 8;
+}
+
+bool cb_bit( cb_node *n, span_t k )
+{
+    uint8_t c = 0;
+
+    if ( n->byte < span_len( k ) )
+        c = k.str[ n->byte ];
+
+    return cb_dir( c, n->mask );
+}
+
 void *cb_get( cb_iterator *i )
 {
     return i->stack[ i->depth ];
@@ -53,22 +68,22 @@ void cb_iter_realloc( cb_iterator *i )
     }
 }
 
-void cb_iter_dive( cb_iterator *i )
+void cb_iter_dive( cb_iterator *i, span_t where )
 {
     cb_node *n = i->stack[ i->depth ];
 
     while ( n && n->vsize[ 0 ] == CB_VSIZE_INTERNAL )
     {
         cb_iter_realloc( i );
-        n = n->child[ 0 ];
+        n = n->child[ cb_bit( n, where ) ];
         i->stack[ ++i->depth ] = n;
     }
 
     cb_iter_realloc( i );
-    i->stack[ ++i->depth ] = n->child[ 0 ];
+    i->stack[ ++i->depth ] = n->child[ cb_bit( n, where ) ];
 }
 
-cb_iterator cb_begin( cb_tree *t )
+cb_iterator cb_begin_at( cb_tree *t, span_t where )
 {
     cb_iterator i;
     cb_node *n = t->root;
@@ -77,26 +92,21 @@ cb_iterator cb_begin( cb_tree *t )
     if ( !n )
         return i;
 
-    i.depth = i.max_depth = 0;
-
-    if ( t->vsize == CB_VSIZE_INTERNAL )
-    {
-        while ( n && n->vsize[ 0 ] == CB_VSIZE_INTERNAL )
-            ++ i.max_depth, n = n->child[ 0 ];
-
-        assert( n );
-
-        ++ i.max_depth;
-        n = n->child[ 0 ];
-    }
+    i.depth = 0;
+    i.max_depth = 8;
 
     i.stack = calloc( i.max_depth + 1, sizeof( cb_node * ) );
     i.stack[ 0 ] = t->root;
 
     if ( t->vsize == CB_VSIZE_INTERNAL )
-        cb_iter_dive( &i );
+        cb_iter_dive( &i, where );
 
     return i;
+}
+
+cb_iterator cb_begin( cb_tree *t )
+{
+    return cb_begin_at( t, span_lit( "" ) );
 }
 
 void cb_next( cb_iterator *i )
@@ -119,27 +129,12 @@ void cb_next( cb_iterator *i )
     i->stack[ i->depth ] = parent->child[ 1 ];
 
     if ( parent->vsize[ 1 ] == CB_VSIZE_INTERNAL )
-        cb_iter_dive( i );
+        cb_iter_dive( i, span_lit( "" ) );
 }
 
 bool cb_end( cb_iterator *i )
 {
     return i->depth == -1;
-}
-
-bool cb_dir( uint8_t c, uint8_t mask )
-{
-    return ( 1 + ( mask | c ) ) >> 8;
-}
-
-bool cb_bit( cb_node *n, span_t k )
-{
-    uint8_t c = 0;
-
-    if ( n->byte < span_len( k ) )
-        c = k.str[ n->byte ];
-
-    return cb_dir( c, n->mask );
 }
 
 cb_result cb_find( cb_tree *t, span_t k )
