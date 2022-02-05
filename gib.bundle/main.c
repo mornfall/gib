@@ -76,24 +76,32 @@ void job_cleanup( state_t *s, int fd )
 
 void main_loop( state_t *s )
 {
-    while ( s->running_count < s->running_max )
-        if ( !job_start( s ) )
-            break;
+    while ( true )
+    {
+        while ( s->running_count < s->running_max )
+            if ( !job_start( s ) )
+                break;
 
-    fd_set ready;
-    FD_ZERO( &ready );
+        fprintf( stderr, "running: %d/%d\r", s->running_count, s->running_max );
 
-    for ( int i = 0; i < MAX_FD; ++i )
-        if ( s->running[ i ] )
-            FD_SET( i, &ready );
+        if ( !s->running_count && !s->job_next )
+            return;
 
-    if ( select( MAX_FD, &ready, 0, 0, 0 ) == -1 )
-        sys_error( "select" );
+        fd_set ready;
+        FD_ZERO( &ready );
 
-    for ( int fd = 0; fd < MAX_FD; ++ fd )
-        if ( FD_ISSET( fd, &ready ) )
-            if ( job_update( s->running[ fd ] ) )
-                job_cleanup( s, fd );
+        for ( int i = 0; i < MAX_FD; ++i )
+            if ( s->running[ i ] )
+                FD_SET( i, &ready );
+
+        if ( select( MAX_FD, &ready, 0, &ready, 0 ) == -1 )
+            sys_error( "select" );
+
+        for ( int fd = 0; fd < MAX_FD; ++ fd )
+            if ( FD_ISSET( fd, &ready ) )
+                if ( job_update( s->running[ fd ] ) )
+                    job_cleanup( s, fd );
+    }
 }
 
 void load_graph( state_t *s )
