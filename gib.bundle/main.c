@@ -23,6 +23,7 @@ typedef struct
     cb_tree env;
     cb_tree nodes;
     cb_tree jobs;
+    cb_tree dyn;
 
     job_t *job_next, *job_last;
     job_t *running[ MAX_FD ];
@@ -103,6 +104,14 @@ void job_cleanup( state_t *s, int fd )
         fprintf( stderr, "\033[J\033[32mok\033[0m %s\n", j->name );
         n->stamp = n->new_stamp;
         ++ s->ok_count;
+
+        if ( j->dyn_info )
+        {
+            dyn_t *di = malloc( VSIZE( di, name ) + strlen( j->name ) + 1 );
+            strcpy( di->name, j->name );
+            di->data = span_mk( j->dyn_info, j->dyn_info + j->dyn_size );
+            cb_insert( &s->dyn, di, VSIZE( di, name ), -1 );
+        }
     }
     else
     {
@@ -236,6 +245,7 @@ int main( int argc, const char *argv[] )
     cb_init( &s.env );
     cb_init( &s.nodes );
     cb_init( &s.jobs );
+    cb_init( &s.dyn );
 
     var_t *srcdir = env_set( &s.env, span_lit( "srcdir" ) );
     var_add( srcdir, span_lit( s.srcdir ) );
@@ -258,7 +268,7 @@ int main( int argc, const char *argv[] )
     if ( asprintf( &path_debug, "%s/gib.debug", s.outdir ) < 0 )
         sys_error( "asprintf" );
 
-    load_dynamic( &s.nodes, path_dyn );
+    load_dynamic( &s.nodes, &s.dyn, path_dyn );
     load_stamps( &s.nodes, path_stamp );
 
     s.job_next = 0;
@@ -314,7 +324,7 @@ int main( int argc, const char *argv[] )
              s.ok_count, s.failed_count, s.skipped_count, elapsed / 60, elapsed % 60 );
 
     write_stamps( &s.nodes, path_stamp );
-    // write_dynamic( &s.nodes );
+    save_dynamic( &s.dyn, path_dyn );
 
     return 0;
 }
