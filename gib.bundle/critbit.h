@@ -43,22 +43,27 @@ void *cb_get( cb_iterator *i )
     return i->stack[ i->depth ];
 }
 
-void cb_dive( cb_iterator *i )
+void cb_iter_realloc( cb_iterator *i )
+{
+    if ( i->depth + 1 == i->max_depth )
+    {
+        i->max_depth *= 2;
+        i->stack = realloc( i->stack, i->max_depth * sizeof( cb_node * ) );
+    }
+}
+
+void cb_iter_dive( cb_iterator *i )
 {
     cb_node *n = i->stack[ i->depth ];
 
     while ( n && n->vsize[ 0 ] == CB_VSIZE_INTERNAL )
     {
-        if ( i->depth == i->max_depth )
-        {
-            i->max_depth *= 2;
-            i->stack = realloc( i->stack, i->max_depth );
-        }
-
+        cb_iter_realloc( i );
         n = n->child[ 0 ];
         i->stack[ ++i->depth ] = n;
     }
 
+    cb_iter_realloc( i );
     i->stack[ ++i->depth ] = n->child[ 0 ];
 }
 
@@ -78,7 +83,7 @@ void cb_begin( cb_iterator *i, cb_tree *t )
 
     i->stack = calloc( i->max_depth + 1, sizeof( cb_node * ) );
     i->stack[ 0 ] = t->root;
-    cb_dive( i );
+    cb_iter_dive( i );
 }
 
 void cb_next( cb_iterator *i )
@@ -97,7 +102,7 @@ void cb_next( cb_iterator *i )
     i->stack[ i->depth ] = parent->child[ 1 ];
 
     if ( parent->vsize[ 1 ] == CB_VSIZE_INTERNAL )
-        cb_dive( i );
+        cb_iter_dive( i );
 }
 
 bool cb_end( cb_iterator *i )
