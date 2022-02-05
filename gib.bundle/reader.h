@@ -1,8 +1,6 @@
 #pragma once
 #include "common.h"
-#include "env.h"
-#include "graph.h"
-
+#include "span.h"
 #define BUFFER 4096
 
 typedef struct fileline
@@ -90,6 +88,26 @@ span_t fetch_word( span_t *in )
 
     while ( in->str < in->end && *in->str != ' ' )
         ++ in->str;
+
+    r.end = in->str;
+
+    while ( *in->str == ' ' )
+        in->str ++;
+
+    return r;
+}
+
+span_t fetch_word_escaped( span_t *in )
+{
+    span_t r = *in;
+
+    bool bs = false;
+
+    while ( in->str < in->end && ( bs || *in->str != ' ' ) )
+    {
+        bs = *in->str == '\\';
+        ++ in->str;
+    }
 
     r.end = in->str;
 
