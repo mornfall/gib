@@ -44,8 +44,6 @@ void load_manifest( cb_tree *nodes, var_t *src, const char *file )
 
             char *file = node->name + span_len( dir ) + slash;
             span_copy( file, path );
-
-            fprintf( stderr, "src: %s\n", node->name );
             var_add( src, span_mk( node->name, node->name + len ) );
 
             if ( !graph_put( nodes, node, len ) )
