@@ -293,6 +293,8 @@ void load_rules( cb_tree *nodes, cb_tree *env, const char *file )
     if ( !reader_init( &s.reader, file ) )
         sys_error( "opening %s", file );
 
+    graph_add( nodes, span_lit( file ) );
+
     rl_stanza_clear( &s );
 
     while ( fetch_line( &s.reader ) )
