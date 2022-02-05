@@ -27,6 +27,7 @@ typedef struct
     job_t *job_next, *job_last;
     job_t *running[ MAX_FD ];
 
+    int skipped_count;
     int failed_count;
     int ok_count;
     int todo_count;
@@ -71,6 +72,20 @@ bool job_start( state_t *s )
 }
 
 void create_jobs( state_t *s, node_t *goal );
+
+void skip( state_t *s, node_t *n )
+{
+    if ( n->failed )
+        return;
+
+    n->failed = true;
+    fprintf( stderr, "\033[J\033[33m--\033[0m %s\n", n->name );
+    s->skipped_count ++;
+    s->todo_count --;
+
+    for ( cb_iterator i = cb_begin( &n->blocking ); !cb_end( &i ); cb_next( &i ) )
+        skip( s, cb_get( &i ) );
+}
 
 void job_cleanup( state_t *s, int fd )
 {
@@ -266,6 +281,7 @@ int main( int argc, const char *argv[] )
         fprintf( stderr, "goal all does not exist\n" ), exit( 1 );
 
     s.failed_count = 0;
+    s.skipped_count = 0;
     s.ok_count = 0;
     s.running_count = 0;
     s.queued_count = 0;
@@ -294,8 +310,8 @@ int main( int argc, const char *argv[] )
     }
 
     elapsed = time( NULL ) - started;
-    fprintf( stderr, "build finished: %d ok, %d failed, %lld:%02lld elapsed\n",
-             s.ok_count, s.failed_count, elapsed / 60, elapsed % 60 );
+    fprintf( stderr, "build finished: %d ok, %d failed, %d skipped, %lld:%02lld elapsed\n",
+             s.ok_count, s.failed_count, s.skipped_count, elapsed / 60, elapsed % 60 );
 
     write_stamps( &s.nodes, path_stamp );
     // write_dynamic( &s.nodes );
