@@ -150,10 +150,10 @@ int main( int argc, const char *argv[] )
     cb_init( &s.jobs );
 
     load_rules( &s.nodes, &s.env, "gibfile" );
-    var_t *outdir = env_get( &s.env, span_lit( "outdir" ) );
+    var_t *var_outpath = env_get( &s.env, span_lit( "outpath" ) );
+    const char *outpath = var_outpath && var_outpath->list ? var_outpath->list->data : 0;
 
-    if ( asprintf( &s.outdir, "%s/build.default",
-                   outdir && outdir->list ? outdir->list->data : s.srcdir ) < 0 )
+    if ( asprintf( &s.outdir, "%s%sdefault", outpath ?: s.srcdir, outpath ? "" : "/build." ) < 0 )
         sys_error( "asprintf" );
 
     char *path_dyn, *path_stamp;
