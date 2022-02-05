@@ -65,7 +65,10 @@ void job_cleanup( state_t *s, int fd )
     if ( WIFEXITED( status ) && WEXITSTATUS( status ) == 0 )
         fprintf( stderr, "%-*sok\n", 75, j->name );
     else
+    {
         fprintf( stderr, "%-*sno\n", 75, j->name );
+        n->failed = true;
+    }
 
     s->running_count --;
     n->stamp = n->new_stamp;
@@ -80,7 +83,7 @@ void job_cleanup( state_t *s, int fd )
         b->visited = false;
         create_jobs( s, b );
 
-        if ( !b->waiting && b->stamp != b->new_stamp )
+        if ( !b->waiting && b->stamp != b->new_stamp && !b->failed )
             job_queue( s, job_wanted( &s->jobs, b, 0 ) );
     }
 }
@@ -136,7 +139,7 @@ void create_jobs( state_t *s, node_t *goal )
         if ( out && out->new_stamp < dep->stamp )
             out->new_stamp = dep->stamp;
 
-        if ( dep_out && dep_out->stamp != dep_out->new_stamp )
+        if ( dep_out && dep_out->stamp != dep_out->new_stamp && !dep_out->failed )
             job_queue( s, job_wanted( &s->jobs, dep_out, goal ) );
     }
 }

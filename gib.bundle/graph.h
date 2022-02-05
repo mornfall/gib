@@ -9,6 +9,7 @@ typedef struct node
 {
     node_type type:3;
     bool visited:1;
+    bool failed:1;
     int64_t stamp;
     cb_tree deps;
 
