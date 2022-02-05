@@ -3,7 +3,9 @@
 #include "graph.h"
 #include "job.h"
 #include <sys/wait.h>
+#include <sys/utsname.h>
 #include <signal.h>
+#include <ctype.h>
 #define MAX_FD 64
 
 static sig_atomic_t _signalled = 0;
@@ -247,8 +249,17 @@ int main( int argc, const char *argv[] )
     cb_init( &s.jobs );
     cb_init( &s.dyn );
 
+    struct utsname uts;
+    if ( uname( &uts ) < 0 )
+        sys_error( "uname" );
+    for ( char *s = uts.sysname; *s != 0; ++s )
+        if ( isupper( *s ) )
+            *s += 32;
+
     var_t *srcdir = env_set( &s.env, span_lit( "srcdir" ) );
     var_add( srcdir, span_lit( s.srcdir ) );
+    var_t *uname = env_set( &s.env, span_lit( "uname" ) );
+    var_add( uname, span_lit( uts.sysname ) );
 
     load_rules( &s.nodes, &s.env, "gib.file" );
     var_t *var_outpath = env_get( &s.env, span_lit( "outpath" ) );
