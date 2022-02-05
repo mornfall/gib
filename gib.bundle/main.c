@@ -2,6 +2,7 @@
 #include "rules.h"
 #include "graph.h"
 #include "job.h"
+#include <sys/wait.h>
 #define MAX_FD 64
 
 typedef struct
@@ -50,6 +51,19 @@ bool job_start( state_t *s )
 void job_cleanup( state_t *s, int fd )
 {
     job_t *j = s->running[ fd ];
+    s->running[ fd ] = 0;
+    node_t *n = j->node;
+
+    int status;
+
+    if ( waitpid( j->pid, &status, 0 ) == -1 )
+        sys_error( "waitpid %d", j->pid );
+
+    if ( WIFEXITED( status ) && WEXITSTATUS( status ) == 0 )
+        fprintf( stderr, "%-*sok\n", 75, j->name );
+    else
+        fprintf( stderr, "%-*sno\n", 75, j->name );
+
     s->running_count --;
     for ( cb_iterator i = cb_begin( &j->blocking ); !cb_end( &i ); cb_next( &i ) )
     {
