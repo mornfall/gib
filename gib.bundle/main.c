@@ -192,7 +192,7 @@ int main( int argc, const char *argv[] )
     var_t *var_outpath = env_get( &s.env, span_lit( "outpath" ) );
     const char *outpath = var_outpath && var_outpath->list ? var_outpath->list->data : 0;
 
-    if ( asprintf( &s.outdir, "%s%sdefault", outpath ?: s.srcdir, outpath ? "" : "/build." ) < 0 )
+    if ( asprintf( &s.outdir, "%s%sdefault", outpath ?: s.srcdir, outpath ? "" : "/bin." ) < 0 )
         sys_error( "asprintf" );
 
     char *path_dyn, *path_stamp;
