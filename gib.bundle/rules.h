@@ -223,6 +223,7 @@ void rl_replay( struct rl_state *s, var_t *cmds, fileline_t pos )
 void rl_statement( struct rl_state *s )
 {
     span_t cmd = fetch_word( &s->reader.span );
+    var_t *iter = 0;
 
     if ( !span_eq( cmd, "def" ) && !span_eq( cmd, "for" ) )
         return rl_command( s, cmd, s->reader.span );
@@ -249,9 +250,12 @@ void rl_statement( struct rl_state *s )
         var_add( cmds, s->reader.span );
 
     if ( span_eq( cmd, "def" ) )
+    {
+        cmds = 0;
         goto out;
+    }
 
-    var_t *iter = var_alloc( span_lit( "for-iter" ) );
+    iter = var_alloc( span_lit( "for-iter" ) );
     env_expand( iter, &s->locals, &s->globals, args, 0 );
     value_t *val = iter->list;
 
@@ -269,6 +273,8 @@ void rl_statement( struct rl_state *s )
 
 out:
     rl_pop( s );
+    var_free( cmds );
+    var_free( iter );
     span_free( name );
     span_free( args );
 }
