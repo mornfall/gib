@@ -9,7 +9,6 @@ typedef struct job
     pid_t pid;
     bool queued;
     int pipe_fd;
-    cb_tree blocking;
     struct job *next;
     char *dyn_info;
     int dyn_size;
@@ -53,27 +52,27 @@ void job_fork( job_t *j, int dirfd )
         sys_error( "fork %s [%s]:", j->name, cmd->data );
 }
 
-job_t *job_wanted( cb_tree *jobs, node_t *build, node_t *blocked )
+job_t *job_find( cb_tree *jobs, node_t *node )
+{
+    job_t *j = cb_find( jobs, span_lit( node->name ) ).leaf;
+    if ( j && !strcmp( j->name, node->name ) )
+        return j;
+    else
+        return 0;
+}
+
+job_t *job_add( cb_tree *jobs, node_t *build )
 {
     span_t name = span_lit( build->name );
-    job_t *j = cb_find( jobs, name ).leaf;
+    job_t *j = job_find( jobs, build );
 
-    if ( !j || strcmp( j->name, build->name ) )
+    if ( !j )
     {
-        j = malloc( VSIZE( j, name ) + span_len( name ) + 1 );
+        j = calloc( 1, VSIZE( j, name ) + span_len( name ) + 1 );
         span_copy( j->name, name );
         j->node = build;
-        j->next = 0;
-        j->queued = 0;
         build->changed = true;
-        cb_init( &j->blocking );
         cb_insert( jobs, j, VSIZE( j, name ), -1 );
-    }
-
-    if ( blocked )
-    {
-        cb_insert( &j->blocking, blocked, VSIZE( blocked, name ), -1 );
-        blocked->waiting ++;
     }
 
     return j;

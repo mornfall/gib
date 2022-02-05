@@ -33,8 +33,7 @@ typedef struct
 
 void job_queue( state_t *s, job_t *j )
 {
-    if ( j->queued )
-        return;
+    assert( !j->queued );
 
     fprintf( s->debug, "queue: %s [%llx → %llx]\n", j->name, j->node->stamp, j->node->new_stamp );
     j->queued = true;
@@ -90,18 +89,21 @@ void job_cleanup( state_t *s, int fd )
 
     s->running_count --;
 
-    for ( cb_iterator i = cb_begin( &j->blocking ); !cb_end( &i ); cb_next( &i ) )
+    for ( cb_iterator i = cb_begin( &j->node->blocking ); !cb_end( &i ); cb_next( &i ) )
     {
         node_t *b = cb_get( &i );
+
+        if ( n->changed )
+            b->dirty = true;
+
+        if ( n->failed && !b->failed )
+            skip( s, b );
 
         if ( -- b->waiting )
             continue;
 
-        b->visited = false;
-        create_jobs( s, b );
-
-        if ( !b->waiting && b->stamp != b->new_stamp && !b->failed )
-            job_queue( s, job_wanted( &s->jobs, b, 0 ) );
+        if ( b->dirty && b->stamp != b->new_stamp && !b->failed )
+            job_queue( s, job_add( &s->jobs, b ) );
     }
 }
 
@@ -171,21 +173,29 @@ void create_jobs( state_t *s, node_t *goal )
     for ( cb_iterator i = cb_begin( &goal->deps ); !cb_end( &i ); cb_next( &i ) )
     {
         node_t *dep = cb_get( &i );
-        node_t *dep_out = dep->type == out_node ? dep : 0;
         create_jobs( s, dep );
 
-        if ( out && out->new_stamp < dep->stamp )
-            out->new_stamp = dep->stamp;
+        if ( out && out->new_stamp < dep->new_stamp )
+            out->new_stamp = dep->new_stamp;
     }
 
-    if ( out && out->new_stamp != out->stamp )
+    if ( out && out->stamp != out->new_stamp )
+    {
         for ( cb_iterator i = cb_begin( &goal->deps ); !cb_end( &i ); cb_next( &i ) )
         {
             node_t *dep = cb_get( &i );
             node_t *dep_out = dep->type == out_node ? dep : 0;
+
             if ( dep_out && dep_out->stamp != dep_out->new_stamp && !dep_out->failed )
-                job_queue( s, job_wanted( &s->jobs, dep_out, goal ) );
+            {
+                cb_insert( &dep->blocking, goal, VSIZE( goal, name ), -1 );
+                goal->waiting ++;
+            }
         }
+
+        if ( !out->waiting ) /* can run right away */
+            job_queue( s, job_add( &s->jobs, out ) );
+    }
 }
 
 int main( int argc, const char *argv[] )

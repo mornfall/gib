@@ -10,12 +10,15 @@ typedef struct node
     node_type type:3;
     bool visited:1;
     bool failed:1;
+    bool changed:1;
+    bool dirty:1;
+
     int64_t stamp;
     cb_tree deps;
+    cb_tree blocking;
 
     int64_t new_stamp;
     int waiting;
-    bool changed;
     value_t *cmd;
     char name[];
 } node_t;
@@ -33,6 +36,7 @@ node_t *graph_get( cb_tree *t, span_t name )
 node_t *graph_put( cb_tree *t, node_t *node, int len )
 {
     cb_init( &node->deps );
+    cb_init( &node->blocking );
 
     if ( cb_insert( t, node, VSIZE( node, name ), len ) )
         return node;
