@@ -82,37 +82,36 @@ bool read_line( reader_t *r )
     return true;
 }
 
-span_t fetch_word( span_t *in )
+span_t fetch_until( span_t *in, char c, char esc )
 {
     span_t r = *in;
+    bool skip = false;
 
-    while ( in->str < in->end && *in->str != ' ' )
-        ++ in->str;
-
-    r.end = in->str;
-
-    while ( *in->str == ' ' )
-        in->str ++;
-
-    return r;
-}
-
-span_t fetch_word_escaped( span_t *in )
-{
-    span_t r = *in;
-
-    bool bs = false;
-
-    while ( in->str < in->end && ( bs || *in->str != ' ' ) )
+    while ( in->str < in->end && ( esc && skip || *in->str != c ) )
     {
-        bs = *in->str == '\\';
+        skip = *in->str == esc;
         ++ in->str;
     }
 
     r.end = in->str;
 
-    while ( *in->str == ' ' )
+    while ( *in->str == c )
         in->str ++;
 
     return r;
+}
+
+span_t fetch_line( span_t *in )
+{
+    return fetch_until( in, '\n', 0 );
+}
+
+span_t fetch_word( span_t *in )
+{
+    return fetch_until( in, ' ', 0 );
+}
+
+span_t fetch_word_escaped( span_t *in )
+{
+    return fetch_until( in, ' ', '\\' );
 }
