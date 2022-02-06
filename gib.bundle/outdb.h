@@ -149,7 +149,7 @@ void load_dynamic( cb_tree *nodes, cb_tree *dyn, const char *path )
         if ( span_eq( word, "out" ) )
             n = graph_get( nodes, r.span );
 
-        if ( span_eq( word, "dep" ) )
+        if ( n && span_eq( word, "dep" ) )
         {
             node_t *dep = graph_get( nodes, r.span );
 
