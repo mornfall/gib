@@ -211,7 +211,7 @@ void job_cleanup( state_t *s, int fd )
 
 void teardown( state_t *s )
 {
-    fprintf( stderr, "[caught signal %d, cleaning up]                \n", _signalled );
+    fprintf( stderr, "\r[caught signal %d, cleaning up]                \n", _signalled );
     fflush( stderr );
 
     job_t *j = NULL;
