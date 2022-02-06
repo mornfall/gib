@@ -1,0 +1,11 @@
+src  gibsrc gibdir gib.bundle/manifest.txt
+
+out gib.wrapcc
+dep gib.bundle/wrapcc.c
+dep gib.bundle/reader.h
+dep gib.bundle/common.h
+cmd $(cc) $(cflags) -o $(out) $(srcdir)/gib.bundle/wrapcc.c
+
+out gib.nochange
+dep gib.bundle/nochange.c
+cmd $(cc) $(cflags) -o $(out) $(srcdir)/gib.bundle/nochange.c
