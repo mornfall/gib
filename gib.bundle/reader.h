@@ -1,7 +1,7 @@
 #pragma once
 #include "common.h"
 #include "span.h"
-#define BUFFER 4096
+#define BUFFER 8192
 
 typedef struct fileline
 {
