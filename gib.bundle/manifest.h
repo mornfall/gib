@@ -6,7 +6,7 @@ void load_manifest( cb_tree *nodes, var_t *src, var_t *dirs, const char *file )
 {
     reader_t r;
 
-    if ( !reader_init( &r, file ) )
+    if ( !reader_init( &r, AT_FDCWD, file ) )
         sys_error( "opening %s", file );
 
     int rootfd = open( ".", O_DIRECTORY | O_RDONLY );

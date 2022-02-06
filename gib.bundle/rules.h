@@ -314,7 +314,7 @@ void load_rules( cb_tree *nodes, cb_tree *env, const char *file )
     s.nodes = nodes;
     s.stack = 0;
 
-    if ( !reader_init( &s.reader, file ) )
+    if ( !reader_init( &s.reader, AT_FDCWD, file ) )
         sys_error( "opening %s", file );
 
     graph_add( nodes, span_lit( file ) );

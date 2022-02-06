@@ -115,7 +115,7 @@ void load_dynamic( cb_tree *nodes, cb_tree *dyn, const char *path )
     int buf_size = 0;
     int buf_ptr = 0;
 
-    if ( !reader_init( &r, path ) )
+    if ( !reader_init( &r, AT_FDCWD, path ) )
     {
         if ( errno == ENOENT )
             return;
@@ -196,7 +196,7 @@ void load_stamps( cb_tree *nodes, const char *file )
 {
     reader_t r;
 
-    if ( !reader_init( &r, file ) )
+    if ( !reader_init( &r, AT_FDCWD, file ) )
     {
         if ( errno == ENOENT )
             return;

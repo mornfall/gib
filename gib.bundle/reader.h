@@ -19,9 +19,9 @@ typedef struct reader
     fileline_t pos;
 } reader_t;
 
-bool reader_init( reader_t *r, const char *file )
+bool reader_init( reader_t *r, int dir_fd, const char *file )
 {
-    r->fd = open( file, O_RDONLY );
+    r->fd = openat( dir_fd, file, O_RDONLY );
     r->span.str = r->span.end = r->buffer;
     r->buffer_use = 0;
 
