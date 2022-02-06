@@ -67,14 +67,14 @@ bool read_line( reader_t *r )
 
     do
     {
-        if ( r->span.end >= r->buffer + r->buffer_use )
+        if ( r->span.end >= r->buffer + r->buffer_use - 1 )
             if ( !shift_buffer( r ) )
                 return false;
         r->span.end ++;
     }
     while ( *r->span.end != '\n' );
 
-    if ( *r->span.str == '\n' )
+    if ( r->span.str < r->span.end && *r->span.str == '\n' )
         r->span.str ++;
 
     r->pos.line ++;
@@ -95,7 +95,7 @@ span_t fetch_until( span_t *in, char c, char esc )
 
     r.end = in->str;
 
-    while ( *in->str == c )
+    while ( in->str < in->end && *in->str == c )
         in->str ++;
 
     return r;

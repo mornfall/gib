@@ -158,7 +158,7 @@ void load_dynamic( cb_tree *nodes, cb_tree *dyn, const char *path )
 
             graph_add_dep( nodes, n, r.span );
 
-            if ( buf_ptr + span_len( line ) > buf_size )
+            if ( buf_ptr + span_len( line ) >= buf_size )
                 buf = realloc( buf, buf_size += buf_size + span_len( line ) + 1 );
             span_copy( buf + buf_ptr, line );
             buf_ptr += span_len( line );
