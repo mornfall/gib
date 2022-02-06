@@ -146,7 +146,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
         {
             node_t *manifest = graph_add( s->nodes, span_lit( val->data ) );
             manifest->type = src_node;
-            graph_stat( manifest );
+            graph_do_stat( manifest );
             load_manifest( s->nodes, src, dir, val->data );
         }
     }

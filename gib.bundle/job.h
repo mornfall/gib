@@ -95,7 +95,6 @@ job_t *job_add( cb_tree *jobs, node_t *build )
         j = calloc( 1, VSIZE( j, name ) + span_len( name ) + 1 );
         span_copy( j->name, name );
         j->node = build;
-        build->changed = true;
         cb_insert( jobs, j, VSIZE( j, name ), -1 );
     }
 

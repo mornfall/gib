@@ -10,14 +10,26 @@ typedef struct node
     node_type type:3;
     bool visited:1;
     bool failed:1;
-    bool changed:1;
     bool dirty:1;
 
-    int64_t stamp;
+    /* Stamps govern what needs to be built:
+     *
+     *  • updated – when was the node was last rebuilt (or updated by the
+     *    user, if it's a sys or src node),
+     *  • changed – when did a rebuild of the node last change it (this stamp
+     *    is not updated when a job notices that its output didn't change since
+     *    last rebuild)
+     *  • want – the next value for updated (i.e. after we are done with this
+     *    run, the node will be up to date with respect to all its dependencies
+     *    as of this stamp). */
+
+    int64_t stamp_updated;
+    int64_t stamp_changed;
+    int64_t stamp_want;
+
     cb_tree deps;
     cb_tree blocking;
 
-    int64_t new_stamp;
     int waiting;
     value_t *cmd;
     char name[];
@@ -33,11 +45,19 @@ node_t *graph_get( cb_tree *t, span_t name )
         return 0;
 }
 
-void graph_stat( node_t *n )
+void graph_use_stat( node_t *n, struct stat *st )
+{
+    n->stamp_want = n->stamp_changed = n->stamp_updated = st->st_mtime;
+}
+
+bool graph_do_stat( node_t *n )
 {
     struct stat st;
-    if ( stat( n->name, &st ) != -1 )
-        n->stamp = n->new_stamp = st.st_mtime;
+
+    if ( stat( n->name, &st ) == -1 )
+        return false;
+    else
+        return graph_use_stat( n, &st ), true;
 }
 
 node_t *graph_put( cb_tree *t, node_t *node, int len )
@@ -66,7 +86,7 @@ void graph_add_dep( cb_tree *t, node_t *n, span_t name )
     {
         dep = graph_add( t, name );
         dep->type = sys_node;
-        graph_stat( dep );
+        graph_do_stat( dep );
     }
 
     cb_insert( &n->deps, dep, VSIZE( dep, name ), -1 );
@@ -78,6 +98,8 @@ void graph_dump( FILE *out, cb_tree *t )
     {
         node_t *n = cb_get( &i );
         fprintf( out, "node: %s\n", n->name );
+        fprintf( out, "updated: %08llx\n", n->stamp_updated );
+        fprintf( out, "changed: %08llx\n", n->stamp_changed );
 
         for ( cb_iterator j = cb_begin( &n->deps ); !cb_end( &j ); cb_next( &j ) )
         {

@@ -44,13 +44,14 @@ void job_show_result( state_t *s, node_t *n, job_t *j )
 {
     const char *status = "???";
     int color = 0;
+    bool changed = n->stamp_changed == n->stamp_want;
 
-    if      ( !n->changed )    status = "--", color = 33, s->skipped_count ++;
+    if      ( !changed )       status = "--", color = 33, s->skipped_count ++;
     else if ( n->failed )      status = "no", color = 31, s->failed_count ++;
     else if ( j && j->warned ) status = "ok", color = 33, s->ok_count ++;
     else                       status = "ok", color = 32, s->ok_count ++;
 
-    if ( n->changed && ( j && j->warned || n->failed ) )
+    if ( changed && ( j && j->warned || n->failed ) )
     {
         char path[ strlen( n->name ) + 13 ];
         char *p = stpcpy( path, "gib.log/" );
@@ -77,7 +78,7 @@ void job_queue( state_t *s, job_t *j )
 {
     assert( !j->queued );
 
-    fprintf( s->debug, "queue: %s [%llx → %llx]\n", j->name, j->node->stamp, j->node->new_stamp );
+    fprintf( s->debug, "queue: %s\n", j->name );
     j->queued = true;
     ++ s->queued_count;
     if ( !s->job_next )
@@ -114,11 +115,31 @@ void job_skip( state_t *s, node_t *n )
         return;
 
     n->failed = true;
-    n->changed = false;
     job_show_result( s, n, NULL );
 
     for ( cb_iterator i = cb_begin( &n->blocking ); !cb_end( &i ); cb_next( &i ) )
         job_skip( s, cb_get( &i ) );
+}
+
+void node_cleanup( state_t *s, node_t *n )
+{
+    if ( n->type != out_node && n->type != meta_node || n->dirty || n->waiting )
+        return;
+
+    for ( cb_iterator i = cb_begin( &n->blocking ); !cb_end( &i ); cb_next( &i ) )
+    {
+        node_t *b = cb_get( &i );
+
+        if ( ! -- b->waiting )
+        {
+            if ( b->dirty )
+                job_queue( s, job_add( &s->jobs, b ) );
+            else
+                node_cleanup( s, b );
+        }
+    }
+
+    cb_clear( &n->blocking );
 }
 
 void job_cleanup( state_t *s, int fd )
@@ -134,7 +155,7 @@ void job_cleanup( state_t *s, int fd )
 
     if ( WIFEXITED( status ) && WEXITSTATUS( status ) == 0 )
     {
-        n->stamp = n->new_stamp;
+        bool changed = true;
 
         if ( j->dyn_info )
         {
@@ -148,12 +169,17 @@ void job_cleanup( state_t *s, int fd )
                 span_t line = fetch_line( &data );
 
                 if ( span_eq( line, "unchanged" ) )
-                    n->changed = false;
+                    changed = false;
 
                 if ( span_eq( line, "warning" ) )
                     j->warned = true;
             }
         }
+
+        n->stamp_updated = n->stamp_want;
+
+        if ( changed )
+            n->stamp_changed = n->stamp_want;
     }
     else
     {
@@ -167,7 +193,7 @@ void job_cleanup( state_t *s, int fd )
     {
         node_t *b = cb_get( &i );
 
-        if ( n->changed )
+        if ( n->stamp_changed > b->stamp_updated )
             b->dirty = true;
 
         if ( n->failed && !b->failed )
@@ -176,8 +202,10 @@ void job_cleanup( state_t *s, int fd )
         if ( -- b->waiting )
             continue;
 
-        if ( b->dirty && b->stamp != b->new_stamp && !b->failed )
+        if ( b->dirty && b->stamp_updated < b->stamp_want && !b->failed )
             job_queue( s, job_add( &s->jobs, b ) );
+        else
+            node_cleanup( s, b );
     }
 }
 
@@ -252,25 +280,25 @@ void create_jobs( state_t *s, node_t *goal )
         node_t *dep = cb_get( &i );
         create_jobs( s, dep );
 
-        if ( out && out->new_stamp < dep->new_stamp )
-            out->new_stamp = dep->new_stamp;
+        if ( out && out->stamp_want < dep->stamp_want )
+            out->stamp_want = dep->stamp_want;
     }
 
-    if ( out && out->stamp != out->new_stamp )
+    if ( out && out->stamp_want > out->stamp_updated )
     {
         for ( cb_iterator i = cb_begin( &goal->deps ); !cb_end( &i ); cb_next( &i ) )
         {
             node_t *dep = cb_get( &i );
             node_t *dep_out = dep->type == out_node ? dep : 0;
 
-            if ( dep_out && dep_out->stamp != dep_out->new_stamp && !dep_out->failed )
+            if ( dep_out && dep_out->stamp_want > dep_out->stamp_updated && !dep_out->failed )
             {
                 cb_insert( &dep->blocking, goal, VSIZE( goal, name ), -1 );
                 goal->waiting ++;
             }
 
-            if ( !dep_out && dep->new_stamp > out->stamp )
-                goal->dirty = true;
+            if ( dep->stamp_changed > out->stamp_updated )
+                out->dirty = true;
         }
 
         ++ s->todo_count;
@@ -368,6 +396,9 @@ int main( int argc, const char *argv[] )
 
     if ( argc == 1 )
         set_goal( &s, "all" );
+
+    for ( cb_iterator i = cb_begin( &s.nodes ); !cb_end( &i ); cb_next( &i ) )
+        node_cleanup( &s, cb_get( &i ) );
 
     time_t started = time( NULL );
     time_t elapsed = 0;

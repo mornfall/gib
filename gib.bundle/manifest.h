@@ -55,7 +55,7 @@ void load_manifest( cb_tree *nodes, var_t *src, var_t *dirs, const char *file )
             if ( fstatat( dirfd, file, &st, 0 ) == -1 )
                 sys_error( "%s:%d: stat failed for %s", r.pos.file, r.pos.line, node->name );
 
-            node->stamp = node->new_stamp = st.st_mtime;
+            graph_use_stat( node, &st );
             node->type = src_node;
         }
     }
