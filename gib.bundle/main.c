@@ -40,6 +40,39 @@ typedef struct
     FILE *debug;
 } state_t;
 
+void job_show_result( state_t *s, node_t *n, job_t *j )
+{
+    const char *status = "???";
+    int color = 0;
+
+    if      ( !n->changed )    status = "--", color = 33, s->skipped_count ++;
+    else if ( n->failed )      status = "no", color = 31, s->failed_count ++;
+    else if ( j && j->warned ) status = "ok", color = 33, s->ok_count ++;
+    else                       status = "ok", color = 32, s->ok_count ++;
+
+    if ( n->changed && ( j && j->warned || n->failed ) )
+    {
+        char path[ strlen( n->name ) + 13 ];
+        char *p = stpcpy( path, "gib.log/" );
+        for ( char *i = n->name; *i; ++p, ++i )
+            *p = ( *i == ' ' || *i == '/' ) ? '_' : *i;
+        strcpy( p, ".txt" );
+
+        reader_t log;
+
+        if ( !reader_init( &log, s->outdir_fd, path ) )
+            sys_error( "opening logfile %s", path );
+
+        while ( read_line( &log ) )
+            fprintf( stderr, " │ %.*s\n", span_len( log.span ), log.span.str );
+
+        close( log.fd );
+    }
+
+    s->todo_count --;
+    fprintf( stderr, "\033[J\033[%dm%s\033[0m %s\n", color, status, n->name );
+}
+
 void job_queue( state_t *s, job_t *j )
 {
     assert( !j->queued );
@@ -75,18 +108,17 @@ bool job_start( state_t *s )
 
 void create_jobs( state_t *s, node_t *goal );
 
-void skip( state_t *s, node_t *n )
+void job_skip( state_t *s, node_t *n )
 {
     if ( n->failed )
         return;
 
     n->failed = true;
-    fprintf( stderr, "\033[J\033[33m--\033[0m %s\n", n->name );
-    s->skipped_count ++;
-    s->todo_count --;
+    n->changed = false;
+    job_show_result( s, n, NULL );
 
     for ( cb_iterator i = cb_begin( &n->blocking ); !cb_end( &i ); cb_next( &i ) )
-        skip( s, cb_get( &i ) );
+        job_skip( s, cb_get( &i ) );
 }
 
 void job_cleanup( state_t *s, int fd )
@@ -114,30 +146,22 @@ void job_cleanup( state_t *s, int fd )
             while ( !span_empty( data ) )
             {
                 span_t line = fetch_line( &data );
-                if ( span_eq( line, "unchanged" ) )
-                {
-                    n->changed = false;
-                    fprintf( stderr, "\033[J\033[33m--\033[0m %s\n", n->name );
-                    break;
-                }
-            }
-        }
 
-        if ( n->changed )
-        {
-            fprintf( stderr, "\033[J\033[32mok\033[0m %s\n", j->name );
-            ++ s->ok_count;
+                if ( span_eq( line, "unchanged" ) )
+                    n->changed = false;
+
+                if ( span_eq( line, "warning" ) )
+                    j->warned = true;
+            }
         }
     }
     else
     {
-        fprintf( stderr, "\033[J\033[31mno\033[0m %s\n", j->name );
-        ++ s->failed_count;
         n->failed = true;
     }
 
     s->running_count --;
-    s->todo_count --;
+    job_show_result( s, n, j );
 
     for ( cb_iterator i = cb_begin( &j->node->blocking ); !cb_end( &i ); cb_next( &i ) )
     {
@@ -147,7 +171,7 @@ void job_cleanup( state_t *s, int fd )
             b->dirty = true;
 
         if ( n->failed && !b->failed )
-            skip( s, b );
+            job_skip( s, b );
 
         if ( -- b->waiting )
             continue;

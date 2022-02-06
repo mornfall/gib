@@ -7,7 +7,8 @@ typedef struct job
 {
     node_t *node;
     pid_t pid;
-    bool queued;
+    bool queued:1;
+    bool warned:1;
     int pipe_fd;
     struct job *next;
     char *dyn_info;
