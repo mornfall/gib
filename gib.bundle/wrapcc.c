@@ -172,35 +172,15 @@ void process_depfile( const char *path )
         error( "did not find the dependency line" );
 }
 
-int main( int argc, char **argv )
+bool wrap( const char **argv, int *rv )
 {
-    char *depfile;
-
-    if ( argc <= 1 )
-        error( "need at least 1 argument" );
-
-    if ( asprintf( &depfile, "wrapcc.%d.d", getpid() ) < 0 )
-        sys_error( "asprintf" );
-
-    off_t stderr_pos = lseek( 2, 0, SEEK_CUR );
     pid_t pid = fork();
 
     if ( pid == 0 )
     {
-        char *argv_n[ argc + 6 ];
-
-        for ( int i = 1; i < argc; ++ i )
-            argv_n[ i - 1 ] = argv[ i ];
-
-        argv_n[ argc - 1 ] = "-MD";
-        argv_n[ argc + 0 ] = "-MT";
-        argv_n[ argc + 1 ] = "out";
-        argv_n[ argc + 2 ] = "-MF";
-        argv_n[ argc + 3 ] = depfile;
-        argv_n[ argc + 4 ] = 0;
-        execv( argv_n[ 0 ], argv_n );
-        sys_error( "execv %s", argv_n[ 0 ] );
-        return 127;
+        execv( argv[ 0 ], argv );
+        sys_error( "execv %s", argv[ 0 ] );
+        exit( 127 );
     }
 
     if ( pid < 0 )
@@ -211,23 +191,49 @@ int main( int argc, char **argv )
 
     if ( WIFEXITED( status ) )
     {
-        if ( WEXITSTATUS( status ) == 0 )
-        {
-            if ( stderr_pos >= 0 && stderr_pos != lseek( 2, 0, SEEK_CUR ) )
-                write( 3, "warning\n", 8 );
-            process_depfile( depfile );
-        }
-        else
-            unlink( depfile );
-
-        return WEXITSTATUS( status );
+        *rv = WEXITSTATUS( status );
+        return *rv == 0;
     }
 
     if ( WIFSIGNALED( status ) )
     {
-        fprintf( stderr, "%s terminated by signal %d\n", argv[ 1 ], WTERMSIG( status ) );
-        return 128 + WTERMSIG( status );
+        fprintf( stderr, "%s terminated by signal %d\n", argv[ 0 ], WTERMSIG( status ) );
+        *rv = 128 + WTERMSIG( status );
+        return false;
+    }
+}
+
+int main( int argc, char **argv )
+{
+    char *depfile;
+    int rv;
+
+    if ( argc <= 1 )
+        error( "need at least 1 argument" );
+
+    if ( asprintf( &depfile, "wrapcc.%d.d", getpid() ) < 0 )
+        sys_error( "asprintf" );
+
+    off_t stderr_pos = lseek( 2, 0, SEEK_CUR );
+    char *argv_n[ argc + 6 ];
+
+    for ( int i = 1; i < argc; ++ i )
+        argv_n[ i - 1 ] = argv[ i ];
+
+    argv_n[ argc - 1 ] = "-MD";
+    argv_n[ argc + 0 ] = "-MT";
+    argv_n[ argc + 1 ] = "out";
+    argv_n[ argc + 2 ] = "-MF";
+    argv_n[ argc + 3 ] = depfile;
+    argv_n[ argc + 4 ] = 0;
+
+    if ( wrap( argv_n, &rv ) )
+    {
+        if ( stderr_pos >= 0 && stderr_pos != lseek( 2, 0, SEEK_CUR ) )
+            write( 3, "warning\n", 8 );
+        process_depfile( depfile );
     }
 
-    return 1;
+    unlink( depfile );
+    return rv;
 }
