@@ -151,16 +151,7 @@ void load_dynamic( cb_tree *nodes, cb_tree *dyn, const char *path )
 
         if ( n && span_eq( word, "dep" ) )
         {
-            node_t *dep = graph_get( nodes, r.span );
-
-            if ( !dep && r.span.str[ 0 ] == '/' )
-            {
-                dep = graph_add( nodes, r.span );
-                dep->type = sys_node;
-                graph_stat( dep );
-            }
-
-            cb_insert( &n->deps, dep, VSIZE( dep, name ), -1 );
+            graph_add_dep( nodes, n, r.span );
 
             if ( buf_ptr + span_len( line ) > buf_size )
                 buf = realloc( buf, buf_size += buf_size + span_len( line ) + 1 );

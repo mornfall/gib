@@ -90,9 +90,12 @@ void rl_stanza_end( struct rl_state *s )
             rl_error( s, "duplicate output: %s", name.str );
 
         node->type = s->meta_set ? meta_node : out_node;
+
         if ( s->cmd_set )
         {
             node->cmd = env_get( &s->locals, span_lit( "cmd" ) )->list;
+            span_t argv_0 = span_lit( node->cmd->data );
+            graph_add_dep( s->nodes, node, argv_0 );
             /* TODO take ownership! rl_stanza_clear will destroy the variable */
         }
 
@@ -123,6 +126,9 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
             span_t word = fetch_word( &args );
             env_expand( cmd, &s->locals, s->globals, word, 0 );
         }
+
+        if ( !cmd->list )
+            rl_error( s, "empty command" );
     }
 
     if ( span_eq( cmd, "src" ) )

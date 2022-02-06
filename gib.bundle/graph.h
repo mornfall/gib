@@ -58,6 +58,19 @@ node_t *graph_add( cb_tree *t, span_t name )
     return graph_put( t, node, span_len( name ) ) ?: ( free( node ), ( node_t * ) 0 );
 }
 
+void graph_add_dep( cb_tree *t, node_t *n, span_t name )
+{
+    node_t *dep = graph_get( t, name );
+
+    if ( !dep && name.str[ 0 ] == '/' )
+    {
+        dep = graph_add( t, name );
+        dep->type = sys_node;
+        graph_stat( dep );
+    }
+
+    cb_insert( &n->deps, dep, VSIZE( dep, name ), -1 );
+}
 
 void graph_dump( FILE *out, cb_tree *t )
 {
