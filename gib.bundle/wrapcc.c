@@ -182,6 +182,7 @@ int main( int argc, char **argv )
     if ( asprintf( &depfile, "wrapcc.%d.d", getpid() ) < 0 )
         sys_error( "asprintf" );
 
+    off_t stderr_pos = lseek( 2, 0, SEEK_CUR );
     pid_t pid = fork();
 
     if ( pid == 0 )
@@ -211,7 +212,11 @@ int main( int argc, char **argv )
     if ( WIFEXITED( status ) )
     {
         if ( WEXITSTATUS( status ) == 0 )
+        {
+            if ( stderr_pos >= 0 && stderr_pos != lseek( 2, 0, SEEK_CUR ) )
+                write( 3, "warning\n", 8 );
             process_depfile( depfile );
+        }
         else
             unlink( depfile );
 
