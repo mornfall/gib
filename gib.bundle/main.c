@@ -227,18 +227,19 @@ void teardown( state_t *s )
 
 bool main_loop( state_t *s )
 {
-    fd_set ready;
+    fd_set ready, except;
     FD_ZERO( &ready );
+    FD_ZERO( &except );
 
     if ( s->running_count )
     {
         for ( int i = 0; i < MAX_FD; ++i )
             if ( s->running[ i ] )
-                FD_SET( i, &ready );
+                FD_SET( i, &ready ), FD_SET( i, &except );
 
         struct timeval tv = { 1, 0 };
 
-        switch ( select( MAX_FD, &ready, 0, &ready, &tv ) )
+        switch ( select( MAX_FD, &ready, 0, &except, &tv ) )
         {
             case 0:
                 return true;
@@ -255,7 +256,7 @@ bool main_loop( state_t *s )
 
     if ( s->running_count )
         for ( int fd = 0; fd < MAX_FD; ++ fd )
-            if ( FD_ISSET( fd, &ready ) )
+            if ( FD_ISSET( fd, &ready ) || FD_ISSET( fd, &except ) )
                 if ( job_update( s->running[ fd ] ) )
                     job_cleanup( s, fd );
 
