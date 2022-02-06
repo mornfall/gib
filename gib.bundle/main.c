@@ -268,11 +268,14 @@ void create_jobs( state_t *s, node_t *goal )
                 cb_insert( &dep->blocking, goal, VSIZE( goal, name ), -1 );
                 goal->waiting ++;
             }
+
+            if ( !dep_out && dep->new_stamp > out->stamp )
+                goal->dirty = true;
         }
 
         ++ s->todo_count;
 
-        if ( !out->waiting ) /* can run right away */
+        if ( !out->waiting && out->dirty ) /* can run right away */
             job_queue( s, job_add( &s->jobs, out ) );
     }
 }
