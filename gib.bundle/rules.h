@@ -23,6 +23,8 @@ struct rl_state /* rule loader */
     struct rl_stack *stack;
 };
 
+void load_rules( cb_tree *nodes, cb_tree *env, const char *file );
+
 void rl_error( struct rl_state *s, const char *reason, ... )
 {
     va_list ap;
@@ -223,6 +225,21 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
         assert( cb_contains( &s->positions, name ) );
         fileline_t *pos = cb_find( &s->positions, name ).leaf;
         rl_replay( s, var, *pos );
+    }
+
+    bool sub = false, ignore_missing = false;
+
+    if ( span_eq( cmd, "sub" ) )  sub = true, ignore_missing = false;
+    if ( span_eq( cmd, "sub?" ) ) sub = true, ignore_missing = true;
+
+    if ( sub )
+    {
+        var_t *files = var_alloc( span_lit( "sub-files" ) );
+        env_expand( files, &s->locals, s->globals, args, 0 );
+
+        for ( value_t *val = files->list; val; val = val->next )
+            if ( !ignore_missing || access( val->data, R_OK ) != -1 )
+                load_rules( s->nodes, s->globals, val->data );
     }
 
     s->stanza_started = true;
