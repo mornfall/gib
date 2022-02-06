@@ -99,17 +99,28 @@ void env_add( cb_tree *env, span_t name, span_t val )
     var_add( var, val );
 }
 
+span_t span_stem( span_t s )
+{
+    const char *end = s.end;
+
+    while ( end > s.str && *--end != '/' )
+        if ( *end == '.' )
+            return s.end = end, s;
+
+    return s;
+}
+
 void env_expand( var_t *var, cb_tree *local, cb_tree *global, span_t str, const char *ref );
 
 void env_expand_rec( var_t *var, cb_tree *local, cb_tree *global,
-                     span_t prefix, const char *value, span_t suffix )
+                     span_t prefix, span_t value, span_t suffix )
 {
     char *buffer;
-    int len = asprintf( &buffer, "%.*s%s%.*s", span_len( prefix ), prefix.str,
-                                               value,
-                                               span_len( suffix ), suffix.str );
+    int len = asprintf( &buffer, "%.*s%.*s%.*s", span_len( prefix ), prefix.str,
+                                                 span_len( value ),  value.str,
+                                                 span_len( suffix ), suffix.str );
 
-    const char *next_ref = buffer + span_len( prefix ) + strlen( value );
+    const char *next_ref = buffer + span_len( prefix ) + span_len( value );
     env_expand( var, local, global, span_mk( buffer, buffer + len + 1 ), next_ref );
     free( buffer );
 }
@@ -156,30 +167,45 @@ void env_expand( var_t *var, cb_tree *local, cb_tree *global, span_t str, const 
     ref_spec.str ++;
 
     if ( ref_type == ':' )
-        for ( cb_iterator i = cb_begin_at( &ref_var->set, ref_spec ); !cb_end( &i ); cb_next( &i ) )
+    {
+        span_t suffix_match = ref_spec;
+        span_t prefix_match = fetch_until( &suffix_match, '*', 0 );
+
+        if ( !span_empty( suffix_match ) )
+            suffix_match.str ++;
+
+        for ( cb_iterator i = cb_begin_at( &ref_var->set, prefix_match ); !cb_end( &i ); cb_next( &i ) )
         {
             value_t *val = cb_get( &i );
 
-            if ( strncmp( val->data, ref_spec.str, span_len( ref_spec ) ) ||
-                 strlen( val->data ) > span_len( ref_spec ) && val->data[ span_len( ref_spec ) ] != '/' )
+            if ( strncmp( val->data, prefix_match.str, span_len( prefix_match ) ) )
                 break;
 
-            env_expand_rec( var, local, global, prefix, val->data, suffix );
+            if ( strncmp( val->data + strlen( val->data ) - span_len( suffix_match ),
+                          suffix_match.str, span_len( suffix_match ) ) )
+                continue;
+
+            env_expand_rec( var, local, global, prefix, span_lit( val->data ), suffix );
         }
+    }
 
     else
         for ( value_t *val = ref_var->list; val; val = val->next )
+        {
+            span_t data = span_lit( val->data );
+
             if ( ref_type == '!' )
             {
                 if ( span_eq( ref_spec, "stem" ) )
-                    assert( 0 );
+                    data = span_stem( data );
                 else
                     error( "unknown substitution operator %.*s\n", span_len( ref_spec ), ref_spec.str );
             }
-            else if ( !ref_type )
-                env_expand_rec( var, local, global, prefix, val->data, suffix );
-            else
+            else if ( ref_type )
                 error( "unknown substitution type %c\n", ref_type );
+
+            env_expand_rec( var, local, global, prefix, data, suffix );
+        }
 
     return;
 err:
