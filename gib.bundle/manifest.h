@@ -48,7 +48,7 @@ void load_manifest( cb_tree *nodes, var_t *src, var_t *dirs, const char *file )
             var_add( src, span_mk( node->name, node->name + len ) );
 
             if ( !graph_put( nodes, node, len ) )
-                error( "%s:%d: duplicate node '%s'", node->name );
+                error( "%s:%d: duplicate node '%s'", r.pos.file, r.pos.line, node->name );
 
             struct stat st;
 
