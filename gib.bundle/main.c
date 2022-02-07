@@ -137,7 +137,10 @@ void node_cleanup( state_t *s, node_t *n )
             if ( b->dirty )
                 job_queue( s, job_add( &s->jobs, b ) );
             else
+            {
                 node_cleanup( s, b );
+                s->todo_count --;
+            }
         }
     }
 
@@ -310,7 +313,7 @@ void create_jobs( state_t *s, node_t *goal )
         }
     }
 
-    if ( out->dirty )
+    if ( out->waiting || out->dirty )
         ++ s->todo_count;
 
     if ( !out->waiting && out->dirty ) /* can run right away */
