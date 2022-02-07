@@ -285,7 +285,13 @@ void create_jobs( state_t *s, node_t *goal )
             out->stamp_want = dep->stamp_want;
     }
 
-    if ( out && out->stamp_want > out->stamp_updated )
+    if ( !out )
+        return;
+
+    if ( var_hash( out->cmd ) != out->cmd_hash )
+        out->dirty = true;
+
+    if ( out->stamp_want > out->stamp_updated )
     {
         for ( cb_iterator i = cb_begin( &goal->deps ); !cb_end( &i ); cb_next( &i ) )
         {
@@ -301,12 +307,13 @@ void create_jobs( state_t *s, node_t *goal )
             if ( dep->stamp_changed > out->stamp_updated )
                 out->dirty = true;
         }
+    }
 
+    if ( out->dirty )
         ++ s->todo_count;
 
-        if ( !out->waiting && out->dirty ) /* can run right away */
-            job_queue( s, job_add( &s->jobs, out ) );
-    }
+    if ( !out->waiting && out->dirty ) /* can run right away */
+        job_queue( s, job_add( &s->jobs, out ) );
 }
 
 void set_goal( state_t *s, const char *name )
