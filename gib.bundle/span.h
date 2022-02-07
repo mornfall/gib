@@ -35,11 +35,12 @@ bool span_eq( span_t span, const char *eq )
     return str == span.end && !*eq;
 }
 
-void span_copy( char *out, span_t span )
+char *span_copy( char *out, span_t span )
 {
     while ( span.str < span.end )
         *out++ = *span.str++;
     *out = 0;
+    return out;
 }
 
 int span_len( span_t span )

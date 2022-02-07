@@ -150,10 +150,11 @@ void env_expand( var_t *var, cb_tree *local, cb_tree *global, span_t str, const 
     span_t prefix = span_mk( str.str, ref );
     span_t ref_name = span_mk( ref + 2, ref_end );
     span_t ref_spec = ref_name;
+    span_t ref_full = ref_name;
     span_t suffix = span_mk( ref_end + 1, str.end );
 
     const char *ref_ptr = ref_name.str;
-    for ( ; ref_ptr < ref_name.end && *ref_ptr != ':' && *ref_ptr != '!'; ++ ref_ptr );
+    for ( ; ref_ptr < ref_name.end && !strchr( ":!.", *ref_ptr ); ++ ref_ptr );
     ref_name.end = ref_spec.str = ref_ptr;
 
     var_t *ref_var = env_get( local, ref_name ) ?: env_get( global, ref_name );
@@ -187,25 +188,56 @@ void env_expand( var_t *var, cb_tree *local, cb_tree *global, span_t str, const 
 
             env_expand_rec( var, local, global, prefix, span_lit( val->data ), suffix );
         }
+
+        return;
     }
 
-    else
-        for ( value_t *val = ref_var->list; val; val = val->next )
+    if ( ref_type == '.' )
+    {
+        span_t sub_ref = ref_spec;
+
+        if ( span_len( ref_spec ) && ref_spec.str[ 0 ] == '$' )
         {
-            span_t data = span_lit( val->data );
+            ref_spec.str ++;
+            var_t *spec_var = env_get( local, ref_spec ) ?: env_get( global, ref_spec );
 
-            if ( ref_type == '!' )
-            {
-                if ( span_eq( ref_spec, "stem" ) )
-                    data = span_stem( data );
-                else
-                    error( "unknown substitution operator %.*s\n", span_len( ref_spec ), ref_spec.str );
-            }
-            else if ( ref_type )
-                error( "unknown substitution type %c\n", ref_type );
+            if ( !spec_var || !spec_var->list || spec_var->list->next )
+                error( "substitution $(%.*s.%.*s) is invalid",
+                       span_len( ref_name ), ref_name.str, span_len( ref_spec ), ref_spec.str );
 
-            env_expand_rec( var, local, global, prefix, data, suffix );
+            span_t sub_spec = span_lit( spec_var->list->data );
+            char sub_name_buf[ span_len( ref_name ) + span_len( sub_spec ) + 2 ], *ptr = sub_name_buf;
+            ptr = span_copy( ptr, ref_name );
+            *ptr++ = '.';
+            ptr = span_copy( ptr, sub_spec );
+            span_t sub_name = span_mk( sub_name_buf, ptr );
+            ref_var = env_get( local, sub_name ) ?: env_get( global, sub_name );
         }
+        else
+            ref_var = env_get( local, ref_full ) ?: env_get( global, ref_full );
+
+        ref_type = 0;
+
+        if ( !ref_var ) /* unlike other variable references, non-existence is the same as being empty */
+            return;
+    }
+
+    for ( value_t *val = ref_var->list; val; val = val->next )
+    {
+        span_t data = span_lit( val->data );
+
+        if ( ref_type == '!' )
+        {
+            if ( span_eq( ref_spec, "stem" ) )
+                data = span_stem( data );
+            else
+                error( "unknown substitution operator %.*s\n", span_len( ref_spec ), ref_spec.str );
+        }
+        else if ( ref_type )
+            error( "unknown substitution type %c\n", ref_type );
+
+        env_expand_rec( var, local, global, prefix, data, suffix );
+    }
 
     return;
 err:
