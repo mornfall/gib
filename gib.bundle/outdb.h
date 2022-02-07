@@ -151,18 +151,12 @@ void load_dynamic( cb_tree *nodes, cb_tree *dyn, const char *path )
                 error( "%s:%d: node %.*s does not exist",
                        path, r.pos.line, span_len( r.span ), r.span.str  );
 
-        if ( n && span_eq( word, "dep" ) )
+        if ( span_eq( word, "dep" ) )
         {
-            node_t *dep = graph_get( nodes, r.span );
+            if ( !n )
+                error( "%s:%d: dep not part of an 'out' block", path, r.pos.line );
 
-            if ( !dep && r.span.str[ 0 ] == '/' )
-            {
-                dep = graph_add( nodes, r.span );
-                dep->type = sys_node;
-                graph_stat( dep );
-            }
-
-            cb_insert( &n->deps, dep, VSIZE( dep, name ), -1 );
+            graph_add_dep( nodes, n, r.span );
 
             if ( buf_ptr + span_len( line ) > buf_size )
                 buf = realloc( buf, buf_size += buf_size + span_len( line ) + 1 );

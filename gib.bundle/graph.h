@@ -82,7 +82,7 @@ void graph_add_dep( cb_tree *t, node_t *n, span_t name )
 {
     node_t *dep = graph_get( t, name );
 
-    if ( !dep && name.str[ 0 ] == '/' )
+    if ( !dep && span_len( name ) >= 1 && name.str[ 0 ] == '/' )
     {
         dep = graph_add( t, name );
         dep->type = sys_node;
