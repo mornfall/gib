@@ -181,7 +181,7 @@ void write_stamps( cb_tree *nodes, const char *path )
             continue;
 
         writer_print( &w, "%08llx %08llx %16llx ",
-                          n->stamp_updated, n->stamp_changed, var_hash( n->cmd ) );
+                          n->stamp_updated, n->stamp_changed, n->cmd_hash );
         writer_append( &w, name );
         writer_append( &w, span_lit( "\n" ) );
     }
