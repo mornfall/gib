@@ -43,16 +43,17 @@ typedef struct
 
 void job_show_result( state_t *s, node_t *n, job_t *j )
 {
-    const char *status = "???";
+    const char *status = "??";
     int color = 0;
     bool changed = n->stamp_changed == n->stamp_want;
+    bool updated = n->stamp_updated == n->stamp_want;
 
-    if      ( !changed )       status = "--", color = 33, s->skipped_count ++;
-    else if ( n->failed )      status = "no", color = 31, s->failed_count ++;
+    if      ( n->failed )      status = "no", color = 31, s->failed_count ++;
+    else if ( !changed )       status = "--", color = 33, s->skipped_count ++;
     else if ( j && j->warned ) status = "ok", color = 33, s->ok_count ++;
     else                       status = "ok", color = 32, s->ok_count ++;
 
-    if ( changed && ( j && j->warned || n->failed ) )
+    if ( n->failed || changed && j && j->warned )
     {
         char path[ strlen( n->name ) + 13 ];
         char *p = stpcpy( path, "gib.log/" );
@@ -115,8 +116,8 @@ void job_skip( state_t *s, node_t *n )
     if ( n->failed )
         return;
 
-    n->failed = true;
     job_show_result( s, n, NULL );
+    n->failed = true;
 
     for ( cb_iterator i = cb_begin( &n->blocking ); !cb_end( &i ); cb_next( &i ) )
         job_skip( s, cb_get( &i ) );
