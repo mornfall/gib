@@ -2,6 +2,7 @@ d gib.bundle
 f main.c
 f sha1.c
 f wrapcc.c
+f findsrc.c
 f reader.h
 f common.h
 f nochange.c
