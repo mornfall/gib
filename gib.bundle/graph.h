@@ -11,6 +11,7 @@ typedef struct node
     bool visited:1;
     bool failed:1;
     bool dirty:1;
+    int waiting;
 
     /* Stamps govern what needs to be built:
      *
@@ -30,8 +31,9 @@ typedef struct node
     cb_tree deps;
     cb_tree blocking;
 
-    int waiting;
+    uint64_t cmd_hash;
     value_t *cmd;
+
     char name[];
 } node_t;
 

@@ -116,12 +116,14 @@ span_t fetch_word_escaped( span_t *in )
     return fetch_until( in, ' ', '\\' );
 }
 
-bool fetch_int( span_t *in, int base, int64_t *result ) /* sigh */
-{
-    char buffer[ span_len( *in ) + 1 ], *endptr;
-    span_copy( buffer, *in );
-    errno = 0;
-    *result = strtoll( buffer, &endptr, base );
-    in->str += endptr - buffer;
+#define FETCH_INT( f )                              \
+    char buffer[ span_len( *in ) + 1 ], *endptr;    \
+    span_copy( buffer, *in );                       \
+    errno = 0;                                      \
+    *result = f( buffer, &endptr, base );           \
+    if ( !errno )                                   \
+        in->str += endptr - buffer;                 \
     return errno == 0;
-}
+
+bool fetch_int( span_t *in, int base, int64_t *result ) { FETCH_INT( strtoll ); }
+bool fetch_uint( span_t *in, int base, uint64_t *result ) { FETCH_INT( strtoull ); }
