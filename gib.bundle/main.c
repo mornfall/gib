@@ -184,9 +184,7 @@ void job_cleanup( state_t *s, int fd )
             n->stamp_changed = n->stamp_want;
     }
     else
-    {
         n->failed = true;
-    }
 
     s->running_count --;
     job_show_result( s, n, j );
