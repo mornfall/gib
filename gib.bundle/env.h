@@ -2,6 +2,7 @@
 #include "common.h"
 #include "span.h"
 #include "critbit.h"
+#include "sha1.h"
 #define VSIZE( x, m ) ( ( int ) ( ( ( void * ) x->m ) - ( ( void * ) x ) ) )
 
 typedef struct value
@@ -90,6 +91,24 @@ void var_add( var_t *var, span_t str )
     value_t *val = malloc( VSIZE( val, data ) + span_len( str ) + 1 );
     span_copy( val->data, str );
     var_add_value( var, val );
+}
+
+uint64_t var_hash( value_t *head )
+{
+    sha1_ctx ctx;
+    sha1_init( &ctx );
+
+    union
+    {
+        uint8_t  sha[ SHA1_DIGEST_LENGTH ];
+        uint64_t hash;
+    } result;
+
+    for ( value_t *val = head; val; val = val->next )
+        sha1_update( &ctx, val->data, strlen( val->data ) + 1 );
+
+    sha1_final( result.sha, &ctx );
+    return result.hash;
 }
 
 void env_add( cb_tree *env, span_t name, span_t val )
