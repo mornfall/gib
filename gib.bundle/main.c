@@ -5,6 +5,8 @@
 #include <sys/wait.h>
 #include <sys/utsname.h>
 #include <signal.h>
+#include <ctype.h>
+#include <time.h>
 #define MAX_FD 64
 
 static volatile sig_atomic_t _signalled = 0;
