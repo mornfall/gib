@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <assert.h>
