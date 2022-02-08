@@ -39,8 +39,8 @@ void job_fork( job_t *j, int dirfd )
         {
             if ( i == argv_size - 1 )
                 argv = realloc( argv, sizeof( char * ) * ( argv_size += argv_size ) );
-            if ( line_ptr + strlen( n->data ) >= line_size )
-                cmdline = realloc( cmdline, line_size += line_size + 8 );
+            if ( line_ptr + strlen( n->data ) + 8 >= line_size )
+                cmdline = realloc( cmdline, line_size += line_size + strlen( n->data ) + 8 );
             line_ptr += sprintf( cmdline + line_ptr, "%s%s\n", i ? "      " : "execv ", n->data );
             argv[ i++ ] = n->data;
             n = n->next;
