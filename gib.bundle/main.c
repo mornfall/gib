@@ -431,5 +431,5 @@ int main( int argc, const char *argv[] )
     write_stamps( &s.nodes, path_stamp );
     save_dynamic( &s.dyn, path_dyn );
 
-    return 0;
+    return s.failed_count > 0;
 }
