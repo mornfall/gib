@@ -200,9 +200,6 @@ void env_expand( var_t *var, cb_tree *local, cb_tree *global, span_t str, const 
         span_t suffix_match = ref_spec;
         span_t prefix_match = fetch_until( &suffix_match, '*', 0 );
 
-        if ( !span_empty( suffix_match ) )
-            suffix_match.str ++;
-
         for ( cb_iterator i = cb_begin_at( &ref_var->set, prefix_match ); !cb_end( &i ); cb_next( &i ) )
         {
             value_t *val = cb_get( &i );
