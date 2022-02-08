@@ -147,15 +147,10 @@ void load_dynamic( cb_tree *nodes, cb_tree *dyn, const char *path )
         span_t word = fetch_word( &r.span );
 
         if ( span_eq( word, "out" ) )
-            if ( !( n = graph_get( nodes, r.span ) ) )
-                error( "%s:%d: node %.*s does not exist",
-                       path, r.pos.line, span_len( r.span ), r.span.str  );
+            n = graph_get( nodes, r.span );
 
-        if ( span_eq( word, "dep" ) )
+        if ( span_eq( word, "dep" ) && n )
         {
-            if ( !n )
-                error( "%s:%d: dep not part of an 'out' block", path, r.pos.line );
-
             graph_add_dep( nodes, n, r.span );
 
             if ( buf_ptr + span_len( line ) >= buf_size )
