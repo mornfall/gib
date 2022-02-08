@@ -57,7 +57,7 @@ void job_show_result( state_t *s, node_t *n, job_t *j )
     {
         fprintf( stderr, "\033[J" );
         char path[ strlen( n->name ) + 13 ];
-        char *p = stpcpy( path, "gib.log/" );
+        char *p = stpcpy( path, "_log/" );
         for ( char *i = n->name; *i; ++p, ++i )
             *p = ( *i == ' ' || *i == '/' ) ? '_' : *i;
         strcpy( p, ".txt" );
