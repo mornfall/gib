@@ -1,7 +1,6 @@
 #include "common.h"
 #include "env.h"
 #include <sys/socket.h>
-#define MAX_ARGS 128
 
 typedef struct job
 {
@@ -29,12 +28,16 @@ void job_fork( job_t *j, int dirfd )
 
     if ( j->pid == 0 ) /* child */
     {
-        char *argv[ MAX_ARGS ];
+        int argv_size = 16;
+        char **argv = malloc( argv_size * sizeof( char * ) );
+
         value_t *n = cmd;
         int i = 0;
 
         while ( n )
         {
+            if ( i == argv_size - 1 )
+                argv = realloc( argv, sizeof( char * ) * ( argv_size += argv_size ) );
             argv[ i++ ] = n->data;
             n = n->next;
         }
