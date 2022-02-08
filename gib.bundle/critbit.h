@@ -72,10 +72,16 @@ void cb_iter_dive( cb_iterator *i, span_t where )
 {
     cb_node *n = i->stack[ i->depth ];
 
-    while ( n && n->vsize[ 0 ] == CB_VSIZE_INTERNAL )
+    while ( n )
     {
         cb_iter_realloc( i );
-        n = n->child[ cb_bit( n, where ) ];
+        bool dir = cb_bit( n, where );
+
+        if ( n->vsize[ dir ] == CB_VSIZE_INTERNAL )
+            n = n->child[ dir ];
+        else
+            break;
+
         i->stack[ ++i->depth ] = n;
     }
 
