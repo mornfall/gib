@@ -118,6 +118,15 @@ void env_add( cb_tree *env, span_t name, span_t val )
     var_add( var, val );
 }
 
+void env_dup( cb_tree *out, cb_tree *env )
+{
+    for ( cb_iterator i = cb_begin( env ); !cb_end( &i ); cb_next( &i ) )
+    {
+        var_t *var = cb_get( &i ); /* TODO copy the values */
+        cb_insert( out, var, VSIZE( var, name ), -1 );
+    }
+}
+
 span_t span_stem( span_t s )
 {
     const char *end = s.end;
