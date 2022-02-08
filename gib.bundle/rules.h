@@ -110,9 +110,9 @@ void rl_stanza_end( struct rl_state *s )
     }
 
     rl_stanza_clear( s );
-};
+}
 
-void rl_replay( struct rl_state *s, var_t *cmds, fileline_t pos );
+void rl_replay( struct rl_state *s, value_t *cmds, fileline_t pos );
 
 void rl_command( struct rl_state *s, span_t cmd, span_t args )
 {
@@ -230,7 +230,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
 
         assert( cb_contains( &s->positions, name ) );
         fileline_t *pos = cb_find( &s->positions, name ).leaf;
-        rl_replay( s, var, *pos );
+        rl_replay( s, var->list, *pos );
     }
 
     bool sub = false, ignore_missing = false;
@@ -251,9 +251,10 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
     s->stanza_started = true;
 }
 
-void rl_replay( struct rl_state *s, var_t *cmds, fileline_t pos )
+void rl_for( struct rl_state *s, value_t *cmds, fileline_t pos );
+
+void rl_replay( struct rl_state *s, value_t *stmt, fileline_t pos )
 {
-    value_t *stmt = cmds->list;
     fileline_t bak = s->reader.pos;
     s->reader.pos = pos; /* FIXME eww */
 
@@ -261,56 +262,40 @@ void rl_replay( struct rl_state *s, var_t *cmds, fileline_t pos )
     {
         span_t line = span_lit( stmt->data );
         span_t cmd = fetch_word( &line );
-        s->reader.pos.line ++;
+
+        if ( span_eq( cmd, "for" ) )
+        {
+            rl_for( s, stmt, pos );
+            break;
+        }
+
         rl_command( s, cmd, line );
+        s->reader.pos.line ++;
         stmt = stmt->next;
     }
 
     s->reader.pos = bak;
 }
 
-void rl_statement( struct rl_state *s )
+void rl_for( struct rl_state *s, value_t *cmds, fileline_t pos )
 {
-    span_t cmd = fetch_word( &s->reader.span );
-    var_t *iter = 0;
+    span_t line = span_lit( cmds->data );
+    fetch_word( &line ); /* 'for' */
+    span_t name = fetch_word( &line );
 
-    if ( !span_eq( cmd, "def" ) && !span_eq( cmd, "for" ) )
-        return rl_command( s, cmd, s->reader.span );
+    cb_tree saved;
+    cb_init( &saved );
+    env_dup( &saved, &s->locals );
 
-    if ( s->stanza_started )
-        rl_error( s, "def in the middle of a stanza" );
-
-    rl_push( s, span_eq( cmd, "for" ) ? "evaluating for loop" : "evaluating def" );
-
-    span_t name = span_dup( fetch_word( &s->reader.span ) );
-    span_t args = span_dup( s->reader.span );
-    fileline_t pos = s->reader.pos;
-
-    if ( env_get( s->globals, name ) )
-        rl_error( s, "name '%.*s' is already used for a variable", span_len( name ), name.str );
-
-    if ( span_eq( cmd, "def" ) )
-        rl_set_position( s, name );
-
-    var_t *cmds = span_eq( cmd, "def" ) ? env_set( &s->templates, name )
-                                        : var_alloc( span_lit( "for-body" ) );
-
-    while ( read_line( &s->reader ) && !span_empty( s->reader.span ) )
-        var_add( cmds, s->reader.span );
-
-    if ( span_eq( cmd, "def" ) )
-    {
-        cmds = 0;
-        goto out;
-    }
-
-    iter = var_alloc( span_lit( "for-iter" ) );
-    env_expand( iter, &s->locals, s->globals, args, 0 );
+    var_t *iter = var_alloc( span_lit( "for-iter" ) );
+    env_expand( iter, &s->locals, s->globals, line, 0 );
     value_t *val = iter->list;
+    cmds = cmds->next;
 
     while ( val )
     {
         rl_stanza_clear( s );
+        env_dup( &s->locals, &saved );
         var_t *ivar = env_set( &s->locals, name );
         var_add( ivar, span_lit( val->data ) );
         rl_replay( s, cmds, pos );
@@ -318,10 +303,50 @@ void rl_statement( struct rl_state *s )
         val = val->next;
     }
 
-out:
+    var_free( iter );
+}
+
+void rl_statement( struct rl_state *s )
+{
+    span_t line = s->reader.span;
+    span_t cmd = fetch_word( &s->reader.span );
+
+    bool is_def = span_eq( cmd, "def" );
+    bool is_for = span_eq( cmd, "for" );
+
+    if ( !is_def && !is_for )
+        return rl_command( s, cmd, s->reader.span );
+
+    if ( s->stanza_started )
+        rl_error( s, "def/for in the middle of a stanza" );
+
+    rl_push( s, is_for ? "evaluating for loop" : "evaluating def" );
+
+    span_t name = span_dup( fetch_word( &s->reader.span ) );
+    span_t args = span_dup( s->reader.span );
+
+    if ( env_get( s->globals, name ) )
+        rl_error( s, "name '%.*s' is already used for a variable", span_len( name ), name.str );
+
+    if ( is_def )
+        rl_set_position( s, name );
+
+    var_t *cmds = is_def ? env_set( &s->templates, name )
+                         : var_alloc( span_lit( "for-body" ) );
+
+    if ( is_for )
+        var_add( cmds, line );
+
+    while ( read_line( &s->reader ) && !span_empty( s->reader.span ) )
+        var_add( cmds, s->reader.span );
+
+    if ( is_for )
+        rl_for( s, cmds->list, s->reader.pos );
+    else
+        cmds = 0;
+
     rl_pop( s );
     var_free( cmds );
-    var_free( iter );
     span_free( name );
     span_free( args );
 }
