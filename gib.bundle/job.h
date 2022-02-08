@@ -28,8 +28,9 @@ void job_fork( job_t *j, int dirfd )
 
     if ( j->pid == 0 ) /* child */
     {
-        int argv_size = 16;
+        int argv_size = 16, line_size = 512, line_ptr = 0;
         char **argv = malloc( argv_size * sizeof( char * ) );
+        char *cmdline = malloc( line_size );
 
         value_t *n = cmd;
         int i = 0;
@@ -38,6 +39,9 @@ void job_fork( job_t *j, int dirfd )
         {
             if ( i == argv_size - 1 )
                 argv = realloc( argv, sizeof( char * ) * ( argv_size += argv_size ) );
+            if ( line_ptr + strlen( n->data ) >= line_size )
+                cmdline = realloc( cmdline, line_size += line_size + 8 );
+            line_ptr += sprintf( cmdline + line_ptr, "%s%s\n", i ? "      " : "execv ", n->data );
             argv[ i++ ] = n->data;
             n = n->next;
         }
@@ -69,6 +73,7 @@ void job_fork( job_t *j, int dirfd )
         dup2( logfd, 1 );
         dup2( logfd, 2 );
 
+        write( 2, cmdline, line_ptr );
         execv( cmd->data, argv );
         sys_error( "execv %s (job %s):", cmd->data, j->name );
     }
