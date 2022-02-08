@@ -91,6 +91,8 @@ void graph_add_dep( cb_tree *t, node_t *n, span_t name )
         graph_do_stat( dep );
     }
 
+    if ( !dep )
+        error( "dependency %.*s not defined", span_len( name ), name );
     cb_insert( &n->deps, dep, VSIZE( dep, name ), -1 );
 }
 
