@@ -419,7 +419,7 @@ int main( int argc, const char *argv[] )
     while ( main_loop( &s ) )
     {
         elapsed = time( NULL ) - started;
-        fprintf( stderr, "%d/%d running, %d/%d queued, %d ok, %d failed, %lld:%02lld elapsed\r",
+        fprintf( stderr, "%d/%d running + %d/%d queued | %d ok + %d failed | %lld:%02lld elapsed\r",
                  s.running_count, s.running_max, s.queued_count, s.todo_count - s.running_count,
                  s.ok_count, s.failed_count, elapsed / 60, elapsed % 60 );
     }
