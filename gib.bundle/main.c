@@ -53,7 +53,7 @@ void job_show_result( state_t *s, node_t *n, job_t *j )
     else if ( j && j->warned ) status = "ok", color = 33, s->ok_count ++;
     else                       status = "ok", color = 32, s->ok_count ++;
 
-    if ( n->failed || changed && j && j->warned )
+    if ( !_signalled && n->failed || changed && j && j->warned )
     {
         fprintf( stderr, "\033[J" );
         char path[ strlen( n->name ) + 13 ];
