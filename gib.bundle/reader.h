@@ -49,6 +49,13 @@ bool shift_buffer( reader_t *r )
     int bytes = read( r->fd, r->buffer + r->buffer_use, BUFFER - r->buffer_use );
 
     if ( bytes == 0 )
+    {
+        if ( close( r->fd ) )
+            sys_error( "closing fd %d", r->fd );
+        r->fd = -1;
+    }
+
+    if ( bytes == 0 || bytes < 0 && errno == EAGAIN )
         return false;
 
     if ( bytes < 0 )
