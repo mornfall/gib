@@ -95,7 +95,7 @@ void rl_stanza_end( struct rl_state *s )
         {
             node->cmd = env_get( &s->locals, span_lit( "cmd" ) )->list;
             span_t argv_0 = span_lit( node->cmd->data );
-            graph_add_dep( s->nodes, node, argv_0 );
+            graph_add_dep( s->nodes, node, argv_0, false );
             /* TODO take ownership! rl_stanza_clear will destroy the variable */
         }
 

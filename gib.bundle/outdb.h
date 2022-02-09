@@ -4,12 +4,6 @@
 
 typedef struct
 {
-    span_t data;
-    char name[];
-} dyn_t;
-
-typedef struct
-{
     int fd;
     int ptr;
     const char *file;
@@ -90,30 +84,36 @@ void writer_close( writer_t *w )
     free( w->tmp );
 }
 
-void save_dynamic( cb_tree *dyn, const char *path )
+void save_dynamic( cb_tree *nodes, const char *path )
 {
     writer_t w;
     writer_open( &w, path );
 
-    for ( cb_iterator i = cb_begin( dyn ); !cb_end( &i ); cb_next( &i ) )
+    for ( cb_iterator i = cb_begin( nodes ); !cb_end( &i ); cb_next( &i ) )
     {
-        dyn_t *dyn = cb_get( &i );
-        writer_print( &w, "out %s\n", dyn->name );
-        writer_append( &w, dyn->data );
+        node_t *n = cb_get( &i );
+
+        if ( !n->deps_dyn.root )
+            continue;
+
+        writer_print( &w, "out %s\n", n->name );
+
+        for ( cb_iterator j = cb_begin( &n->deps_dyn ); !cb_end( &j ); cb_next( &j ) )
+        {
+            node_t *dep = cb_get( &j );
+            writer_print( &w, "dep %s\n", dep->name );
+        }
+
         writer_print( &w, "\n" );
     }
 
     writer_close( &w );
 }
 
-void load_dynamic( cb_tree *nodes, cb_tree *dyn, const char *path )
+void load_dynamic( cb_tree *nodes, const char *path )
 {
     reader_t r;
     node_t *n = NULL;
-
-    char *buf = NULL;
-    int buf_size = 0;
-    int buf_ptr = 0;
 
     if ( !reader_init( &r, AT_FDCWD, path ) )
     {
@@ -123,41 +123,21 @@ void load_dynamic( cb_tree *nodes, cb_tree *dyn, const char *path )
             sys_error( "reading %s", path );
     }
 
-    while ( true )
+    while ( read_line( &r ) )
     {
-        bool done = !read_line( &r );
-
-        if ( span_empty( r.span ) && n )
-        {
-            dyn_t *di = malloc( VSIZE( di, name ) + strlen( n->name ) + 1 );
-            strcpy( di->name, n->name );
-            di->data = span_mk( buf, buf + buf_ptr );
-            cb_insert( dyn, di, VSIZE( di, name ), -1 );
-
-            buf = NULL;
-            buf_ptr = buf_size = 0;
+        if ( span_empty( r.span ) )
             n = NULL;
-            continue;
-        }
-
-        if ( done )
-            break;
 
         span_t line = r.span;
         span_t word = fetch_word( &r.span );
 
         if ( span_eq( word, "out" ) )
-            n = graph_get( nodes, r.span );
+            n = graph_get( nodes, r.span ) ?: graph_add( nodes, r.span );
 
         if ( span_eq( word, "dep" ) && n )
         {
-            graph_add_dep( nodes, n, r.span );
-
-            if ( buf_ptr + span_len( line ) >= buf_size )
-                buf = realloc( buf, buf_size += buf_size + span_len( line ) + 1 );
-            span_copy( buf + buf_ptr, line );
-            buf_ptr += span_len( line );
-            buf[ buf_ptr++ ] = '\n';
+            graph_add_dep( nodes, n, r.span, true );
+            graph_add_dep( nodes, n, r.span, false );
         }
     }
 }

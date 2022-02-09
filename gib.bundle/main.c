@@ -25,7 +25,6 @@ typedef struct
     cb_tree env;
     cb_tree nodes;
     cb_tree jobs;
-    cb_tree dyn;
 
     job_t *job_next, *job_last;
     job_t *running[ MAX_FD ];
@@ -161,31 +160,10 @@ void job_cleanup( state_t *s, int fd )
 
     if ( WIFEXITED( status ) && WEXITSTATUS( status ) == 0 )
     {
-        bool changed = true;
-
-        if ( j->dyn_info )
-        {
-            dyn_t *di = malloc( VSIZE( di, name ) + strlen( j->name ) + 1 );
-            strcpy( di->name, j->name );
-            span_t data = di->data = span_mk( j->dyn_info, j->dyn_info + j->dyn_size );
-            cb_insert( &s->dyn, di, VSIZE( di, name ), -1 );
-
-            while ( !span_empty( data ) )
-            {
-                span_t line = fetch_line( &data );
-
-                if ( span_eq( line, "unchanged" ) )
-                    changed = false;
-
-                if ( span_eq( line, "warning" ) )
-                    j->warned = true;
-            }
-        }
-
         n->stamp_updated = n->stamp_want;
         n->cmd_hash = var_hash( n->cmd );
 
-        if ( changed )
+        if ( j->changed )
             n->stamp_changed = n->stamp_want;
     }
     else
@@ -262,7 +240,7 @@ bool main_loop( state_t *s )
     if ( s->running_count )
         for ( int fd = 0; fd < MAX_FD; ++ fd )
             if ( FD_ISSET( fd, &ready ) || FD_ISSET( fd, &except ) )
-                if ( job_update( s->running[ fd ] ) )
+                if ( job_update( s->running[ fd ], &s->nodes, s->srcdir ) )
                     job_cleanup( s, fd );
 
     if ( !_signalled )
@@ -339,7 +317,6 @@ int main( int argc, const char *argv[] )
     cb_init( &s.env );
     cb_init( &s.nodes );
     cb_init( &s.jobs );
-    cb_init( &s.dyn );
 
     struct utsname uts;
     if ( uname( &uts ) < 0 )
@@ -371,7 +348,7 @@ int main( int argc, const char *argv[] )
     if ( asprintf( &path_debug, "%s/gib.debug", s.outdir ) < 0 )
         sys_error( "asprintf" );
 
-    load_dynamic( &s.nodes, &s.dyn, path_dyn );
+    load_dynamic( &s.nodes, path_dyn );
     load_stamps( &s.nodes, path_stamp );
 
     s.job_next = 0;
@@ -429,7 +406,7 @@ int main( int argc, const char *argv[] )
              s.ok_count, s.failed_count, s.skipped_count, elapsed / 60, elapsed % 60 );
 
     write_stamps( &s.nodes, path_stamp );
-    save_dynamic( &s.dyn, path_dyn );
+    save_dynamic( &s.nodes, path_dyn );
 
     return s.failed_count > 0;
 }

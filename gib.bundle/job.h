@@ -8,10 +8,10 @@ typedef struct job
     pid_t pid;
     bool queued:1;
     bool warned:1;
+    bool changed:1;
     int pipe_fd;
+    reader_t *reader;
     struct job *next;
-    char *dyn_info;
-    int dyn_size;
     char name[];
 } job_t;
 
@@ -120,27 +120,41 @@ job_t *job_add( cb_tree *jobs, node_t *build )
         j = calloc( 1, VSIZE( j, name ) + span_len( name ) + 1 );
         span_copy( j->name, name );
         j->node = build;
+        j->changed = true;
         cb_insert( jobs, j, VSIZE( j, name ), -1 );
     }
 
     return j;
 }
 
-bool job_update( job_t *j )
+bool job_update( job_t *j, cb_tree *nodes, const char *srcdir )
 {
-    char buff[ 1024 ];
-    int bytes = read( j->pipe_fd, buff, 1024 );
-    if ( bytes < 0 )
-        sys_error( "reading from status pipe of %s", j->name );
-
-    if ( bytes == 0 )
+    if ( !j->reader )
     {
-        close( j->pipe_fd );
-        return true;
+        j->reader = malloc( sizeof( reader_t ) );
+        reader_init( j->reader, -1, NULL );
+        fcntl( j->pipe_fd, F_SETFD, O_NONBLOCK );
+        j->reader->fd = j->pipe_fd;
     }
 
-    j->dyn_info = realloc( j->dyn_info, j->dyn_size + bytes );
-    memcpy( j->dyn_info + j->dyn_size, buff, bytes );
-    j->dyn_size += bytes;
-    return false;
+    while ( read_line( j->reader ) )
+    {
+        span_t arg = j->reader->span;
+        span_t cmd = fetch_word( &arg );
+
+        if ( span_eq( cmd, "dep" ) )
+        {
+            if ( span_starts_with( arg, srcdir ) )
+                arg.str += strlen( srcdir ) + 1;
+
+            graph_add_dep( nodes, j->node, arg, true );
+        }
+
+        if ( span_eq( cmd, "unchanged" ) )
+            j->changed = false;
+        if ( span_eq( cmd, "warning" ) )
+            j->warned = true;
+    }
+
+    return j->reader->fd < 0;
 }

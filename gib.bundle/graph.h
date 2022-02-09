@@ -29,6 +29,7 @@ typedef struct node
     int64_t stamp_want;
 
     cb_tree deps;
+    cb_tree deps_dyn;
     cb_tree blocking;
 
     uint64_t cmd_hash;
@@ -65,6 +66,7 @@ bool graph_do_stat( node_t *n )
 node_t *graph_put( cb_tree *t, node_t *node, int len )
 {
     cb_init( &node->deps );
+    cb_init( &node->deps_dyn );
     cb_init( &node->blocking );
 
     if ( cb_insert( t, node, VSIZE( node, name ), len ) )
@@ -80,7 +82,7 @@ node_t *graph_add( cb_tree *t, span_t name )
     return graph_put( t, node, span_len( name ) ) ?: ( free( node ), ( node_t * ) 0 );
 }
 
-void graph_add_dep( cb_tree *t, node_t *n, span_t name )
+void graph_add_dep( cb_tree *t, node_t *n, span_t name, bool dyn )
 {
     node_t *dep = graph_get( t, name );
 
@@ -93,7 +95,7 @@ void graph_add_dep( cb_tree *t, node_t *n, span_t name )
 
     if ( !dep )
         error( "dependency %.*s not defined", span_len( name ), name );
-    cb_insert( &n->deps, dep, VSIZE( dep, name ), -1 );
+    cb_insert( dyn ? &n->deps_dyn : &n->deps, dep, VSIZE( dep, name ), -1 );
 }
 
 void graph_dump( FILE *out, cb_tree *t )
