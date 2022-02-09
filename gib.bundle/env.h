@@ -138,6 +138,41 @@ span_t span_stem( span_t s )
     return s;
 }
 
+var_t *env_resolve( cb_tree *local, cb_tree *global, span_t spec, bool *autovivify )
+{
+    span_t sub = spec;
+    span_t base = fetch_until( &sub, '.', 0 );
+
+    if ( !span_empty( base ) && sub.str[ 0 ] == '$' )
+    {
+        sub.str ++;
+        var_t *sub_name = env_get( local, sub ) ?: env_get( global, sub );
+
+        if ( !sub_name || !sub_name->list || sub_name->list->next )
+            error( "subscript %.*s.$%.*s is invalid",
+                   span_len( base ), base.str, span_len( sub ), sub.str );
+
+        span_t sub_value = span_lit( sub_name->list->data );
+
+        char buffer[ span_len( base ) + span_len( sub_value ) + 2 ], *ptr = buffer;
+        ptr = span_copy( ptr, base );
+        *ptr++ = '.';
+        ptr = span_copy( ptr, sub_value );
+        span_t ref = span_mk( buffer, ptr );
+
+        cb_tree *use_env = env_get( local, base ) ? local : global;
+
+        var_t *var = env_get( use_env, ref );
+        bool make = *autovivify;
+        *autovivify = true;
+
+        return var ?: make ? env_set( use_env, ref ) : NULL;
+    }
+
+    *autovivify = false;
+    return env_get( local, spec ) ?: env_get( global, spec );
+}
+
 void env_expand( var_t *var, cb_tree *local, cb_tree *global, span_t str, const char *ref );
 
 void env_expand_rec( var_t *var, cb_tree *local, cb_tree *global,
@@ -182,11 +217,15 @@ void env_expand( var_t *var, cb_tree *local, cb_tree *global, span_t str, const 
     span_t suffix = span_mk( ref_end + 1, str.end );
 
     const char *ref_ptr = ref_name.str;
-    for ( ; ref_ptr < ref_name.end && !strchr( ":!.", *ref_ptr ); ++ ref_ptr );
+
+    for ( ; ref_ptr < ref_name.end && !strchr( ":!", *ref_ptr ); ++ ref_ptr );
     ref_name.end = ref_spec.str = ref_ptr;
 
-    var_t *ref_var = env_get( local, ref_name ) ?: env_get( global, ref_name );
+    bool vivify = false;
+    var_t *ref_var = env_resolve( local, global, ref_name, &vivify );
 
+    if ( !ref_var && vivify )
+        return;
     if ( !ref_var )
         goto err;
 
@@ -215,36 +254,6 @@ void env_expand( var_t *var, cb_tree *local, cb_tree *global, span_t str, const 
         }
 
         return;
-    }
-
-    if ( ref_type == '.' )
-    {
-        span_t sub_ref = ref_spec;
-
-        if ( span_len( ref_spec ) && ref_spec.str[ 0 ] == '$' )
-        {
-            ref_spec.str ++;
-            var_t *spec_var = env_get( local, ref_spec ) ?: env_get( global, ref_spec );
-
-            if ( !spec_var || !spec_var->list || spec_var->list->next )
-                error( "substitution $(%.*s.%.*s) is invalid",
-                       span_len( ref_name ), ref_name.str, span_len( ref_spec ), ref_spec.str );
-
-            span_t sub_spec = span_lit( spec_var->list->data );
-            char sub_name_buf[ span_len( ref_name ) + span_len( sub_spec ) + 2 ], *ptr = sub_name_buf;
-            ptr = span_copy( ptr, ref_name );
-            *ptr++ = '.';
-            ptr = span_copy( ptr, sub_spec );
-            span_t sub_name = span_mk( sub_name_buf, ptr );
-            ref_var = env_get( local, sub_name ) ?: env_get( global, sub_name );
-        }
-        else
-            ref_var = env_get( local, ref_full ) ?: env_get( global, ref_full );
-
-        ref_type = 0;
-
-        if ( !ref_var ) /* unlike other variable references, non-existence is the same as being empty */
-            return;
     }
 
     for ( value_t *val = ref_var->list; val; val = val->next )

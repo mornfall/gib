@@ -172,31 +172,8 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
     if ( add || dep )
     {
         span_t name = dep ? span_lit( "dep" ) : fetch_word( &args );
-        var_t *var = env_get( &s->locals, name ) ?: env_get( s->globals, name );
-
-        span_t subr = name;
-        span_t base = fetch_until( &subr, '.', 0 );
-
-        if ( !span_empty( base ) && subr.str[ 0 ] == '$' )
-        {
-            subr.str ++;
-            var_t *subname = env_get( &s->locals, subr ) ?: env_get( s->globals, subr );
-
-            if ( !subname || !subname->list || subname->list->next )
-                rl_error( s, "index variable %*.s is not valid", span_len( subr ), subr.str );
-
-            char comp_name[ span_len( base ) + span_len( subr ) + 2 ], *comp_ptr = comp_name;
-            comp_ptr = span_copy( comp_ptr, base );
-            *comp_ptr++ = '.';
-            comp_ptr = stpcpy( comp_ptr, subname->list->data );
-            span_t comp = span_mk( comp_name, comp_ptr );
-
-            cb_tree *use_env = env_get( &s->locals, base ) ? &s->locals : s->globals;
-            var = env_get( use_env, comp );
-
-            if ( !var )
-                var = env_set( use_env, comp );
-        }
+        bool autovivify = true;
+        var_t *var = env_resolve( &s->locals, s->globals, name, &autovivify );
 
         if ( !var )
             rl_error( s, "cannot add to a non-existent variable %.*s", span_len( name ), name.str );
