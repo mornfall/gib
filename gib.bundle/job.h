@@ -127,6 +127,46 @@ job_t *job_add( cb_tree *jobs, node_t *build )
     return j;
 }
 
+span_t path_normalize( span_t in, char *buffer )
+{
+    span_t out = span_mk( buffer, buffer );
+
+    while ( !span_empty( in ) )
+    {
+        span_t comp = fetch_until( &in, '/', 0 );
+
+        if ( span_eq( comp, ".." ) )
+        {
+            if ( !span_empty( out ) ) -- out.end;
+            while ( out.end > out.str && *--out.end != '/' );
+        }
+        else
+            out.end = span_copy( ( char * ) out.end, comp );
+
+        if ( !span_empty( in ) )
+            *( char * )out.end++ = '/';
+
+        if ( span_empty( out ) )
+            break;
+    }
+
+    return out;
+}
+
+span_t job_normalize_dep( span_t path, const char *srcdir, char *buffer )
+{
+    /* assume no symlink shenanigans in the source tree */
+    span_t relative = path;
+
+    if ( span_starts_with( path, srcdir ) )
+    {
+        relative.str += strlen( srcdir ) + 1;
+        relative = path_normalize( relative, buffer );
+    }
+
+    return span_empty( relative ) ? path : relative;
+}
+
 bool job_update( job_t *j, cb_tree *nodes, const char *srcdir )
 {
     if ( !j->reader )
@@ -144,10 +184,9 @@ bool job_update( job_t *j, cb_tree *nodes, const char *srcdir )
 
         if ( span_eq( cmd, "dep" ) )
         {
-            if ( span_starts_with( arg, srcdir ) )
-                arg.str += strlen( srcdir ) + 1;
-
-            graph_add_dep( nodes, j->node, arg, true );
+            char buffer[ span_len( arg ) ];
+            span_t target = job_normalize_dep( arg, srcdir, buffer );
+            graph_add_dep( nodes, j->node, target, true );
         }
 
         if ( span_eq( cmd, "unchanged" ) )
