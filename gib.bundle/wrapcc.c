@@ -211,11 +211,11 @@ int main( int argc, char **argv )
     if ( argc <= 1 )
         error( "need at least 1 argument" );
 
-    if ( asprintf( &depfile, "wrapcc.%d.d", getpid() ) < 0 )
+    if ( asprintf( &depfile, "-MF./wrapcc.%d.d", getpid() ) < 0 )
         sys_error( "asprintf" );
 
     off_t stderr_pos = lseek( 2, 0, SEEK_CUR );
-    char *argv_n[ argc + 6 ];
+    char *argv_n[ argc + 5 ];
 
     for ( int i = 1; i < argc; ++ i )
         argv_n[ i - 1 ] = argv[ i ];
@@ -223,17 +223,16 @@ int main( int argc, char **argv )
     argv_n[ argc - 1 ] = "-MD";
     argv_n[ argc + 0 ] = "-MT";
     argv_n[ argc + 1 ] = "out";
-    argv_n[ argc + 2 ] = "-MF";
-    argv_n[ argc + 3 ] = depfile;
-    argv_n[ argc + 4 ] = 0;
+    argv_n[ argc + 2 ] = depfile;
+    argv_n[ argc + 3 ] = 0;
 
     if ( wrap( argv_n, &rv ) )
     {
         if ( stderr_pos >= 0 && stderr_pos != lseek( 2, 0, SEEK_CUR ) )
             write( 3, "warning\n", 8 );
-        process_depfile( depfile );
+        process_depfile( depfile + 3 );
     }
 
-    unlink( depfile );
+    unlink( depfile + 3 );
     return rv;
 }
