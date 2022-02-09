@@ -162,12 +162,12 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
 
     bool let = false, set = false, split = false, add = false;
     bool dep = span_eq( cmd, "dep" );
-    if ( span_eq( cmd, "set" ) )  set = true, split = false;
-    if ( span_eq( cmd, "set*" ) ) set = true, split = true;
-    if ( span_eq( cmd, "let" ) )  let = true, split = false;
-    if ( span_eq( cmd, "let*" ) ) let = true, split = true;
-    if ( span_eq( cmd, "add" ) )  add = true, split = false;
-    if ( span_eq( cmd, "add*" ) ) add = true, split = true;
+    if ( span_eq( cmd, "set=" ) )  set = true, split = false;
+    if ( span_eq( cmd, "set" ) ) set = true, split = true;
+    if ( span_eq( cmd, "let=" ) )  let = true, split = false;
+    if ( span_eq( cmd, "let" ) ) let = true, split = true;
+    if ( span_eq( cmd, "add=" ) )  add = true, split = false;
+    if ( span_eq( cmd, "add" ) ) add = true, split = true;
 
     if ( add || dep )
     {
