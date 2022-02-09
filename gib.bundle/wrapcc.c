@@ -103,16 +103,15 @@ int main( int argc, char **argv )
         sys_error( "asprintf" );
 
     off_t stderr_pos = lseek( 2, 0, SEEK_CUR );
-    char *argv_n[ argc + 5 ];
+    char *argv_n[ argc + 3 ];
 
     for ( int i = 1; i < argc; ++ i )
         argv_n[ i - 1 ] = argv[ i ];
 
     argv_n[ argc - 1 ] = "-MD";
-    argv_n[ argc + 0 ] = "-MT";
-    argv_n[ argc + 1 ] = "out";
-    argv_n[ argc + 2 ] = depfile;
-    argv_n[ argc + 3 ] = 0;
+    argv_n[ argc + 0 ] = "-MTout";
+    argv_n[ argc + 1 ] = depfile;
+    argv_n[ argc + 2 ] = 0;
 
     if ( wrap( argv_n, &rv ) )
     {
