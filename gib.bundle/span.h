@@ -8,8 +8,7 @@ typedef struct span
     const char *str, *end;
 } span_t;
 
-/*
-const char *span_prefix( span_t span, const char *prefix )
+const char *span_starts_with( span_t span, const char *prefix )
 {
     const char *str = span.str;
 
@@ -18,7 +17,6 @@ const char *span_prefix( span_t span, const char *prefix )
 
     return *prefix ? 0 : str;
 }
-*/
 
 bool span_empty( span_t span )
 {
