@@ -5,6 +5,7 @@ HDR = gib.bundle/span.h \
       gib.bundle/graph.h \
       gib.bundle/job.h \
       gib.bundle/reader.h \
+      gib.bundle/writer.h \
       gib.bundle/manifest.h \
       gib.bundle/outdb.h \
       gib.bundle/rules.h
