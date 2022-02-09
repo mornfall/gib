@@ -1,175 +1,63 @@
 #include "reader.h"
+#include "writer.h"
 #include <sys/wait.h>
 
-typedef struct buffer
+bool process_line( span_t line, writer_t *out )
 {
-    char *data;
-    char *read, *write;
-    char *end;
-} buf_t;
+    while ( !span_empty( line ) && *line.str == ' ' )
+        ++ line.str;
 
-void buf_addchar( buf_t *b, int c )
-{
-    if ( b->write == b->end )
+    while ( !span_empty( line ) )
     {
-        int size = ( b->end - b->data ) * 2;
-        int r_off = b->read - b->data;
-        int w_off = b->write - b->data;
-        b->data = realloc( b->data, size );
-        b->read = b->data + r_off;
-        b->write = b->data + w_off;
-        b->end = b->data + size;
-    }
+        span_t word = fetch_word_escaped( &line );
 
-    *b->write++ = c;
-}
+        if ( span_empty( line ) && span_eq( word, "\\" ) )
+            return true; /* continue */
 
-void buf_clear( buf_t *b )
-{
-    b->write = b->read = b->data;
-}
+        assert( !span_empty( word ) );
+        writer_append( out, span_lit( "dep " ) );
 
-int buf_getchar( buf_t *b, int fd )
-{
-    if ( b->read == b->write )
-    {
-        buf_clear( b );
-        int bytes = read( fd, b->write, b->end - b->write );
-
-        if ( bytes < 0 )
-            sys_error( "read" );
-
-        if ( bytes == 0 )
-            return EOF;
-
-        b->write += bytes;
-    }
-
-    return *b->read++;
-}
-
-void buf_init( buf_t *b )
-{
-    b->data = malloc( 64 );
-    b->end = b->data + 64;
-    buf_clear( b );
-}
-
-void buf_free( buf_t *b )
-{
-    free( b->data );
-    b->data = NULL;
-    buf_clear( b );
-}
-
-/* adapted from make/lowparse.c, (c) 1999, 2000 Mark Espie, BSD2 */
-
-bool read_logical_line( int fd, buf_t *readbuf, buf_t *linebuf )
-{
-    int c = buf_getchar( readbuf, fd );
-
-    while ( true )
-    {
-        if ( c == '\n' )
-            break;
-
-        if ( c == EOF )
-            break;
-
-        buf_addchar( linebuf, c );
-        c = buf_getchar( readbuf, fd );
-
-        while ( c == '\\' )
+        for ( const char *c = word.str; c != word.end; ++c )
         {
-            c = buf_getchar( readbuf, fd );
-
-            if ( c == '\n' )
-            {
-                buf_addchar( linebuf, ' ' );
-                do
-                    c = buf_getchar( readbuf, fd );
-                while ( c == ' ' || c == '\t' );
-            }
-            else
-            {
-                buf_addchar( linebuf, '\\' );
-
-                if ( c == '\\' )
-                {
-                    buf_addchar( linebuf, '\\' );
-                    c = buf_getchar( readbuf, fd );
-                }
-
-                break;
-            }
+            if ( c[ 0 ] == '$' && c[ 1 ] == '$' )
+                ++ c;
+            writer_append( out, span_mk( c, c + 1 ) );
         }
+
+        writer_append( out, span_lit( "\n" ) );
     }
 
-    *linebuf->write = 0;
-    return c != EOF;
+    return false;
 }
 
 void process_depfile( const char *path )
 {
-    int fd = open( path, O_RDONLY );
+    reader_t reader;
+    writer_t writer;
+    bool found = false;
 
-    if ( fd < 0 )
+    if ( !reader_init( &reader, AT_FDCWD, path ) )
         sys_error( "open %s\n", path );
+
+    writer.file = writer.tmp = NULL;
+    writer.ptr = 0;
+    writer.fd = 3;
 
     unlink( path );
 
-    buf_t readbuf, linebuf, outbuf;
-    buf_init( &readbuf );
-    buf_init( &linebuf );
-    buf_init( &outbuf );
-    bool found = false;
-
-    while ( read_logical_line( fd, &readbuf, &linebuf ) )
+    while ( read_line( &reader ) )
     {
-        span_t line = span_mk( linebuf.read, linebuf.write );
-        span_t target = fetch_word( &line );
+        if ( !found )
+            found = span_eq( fetch_word( &reader.span ), "out:" );
 
-        if ( !span_eq( target, "out:" ) )
-        {
-            buf_clear( &linebuf );
-            continue;
-        }
-
-        found = true;
-
-        while ( !span_empty( line ) )
-        {
-            span_t word = fetch_word_escaped( &line );
-
-            strcpy( outbuf.write, "dep " );
-            outbuf.write += 4;
-
-            for ( const char *c = word.str; c != word.end; ++c )
-            {
-                if ( c[ 0 ] == '$' && c[ 1 ] == '$' )
-                    ++ c;
-                buf_addchar( &outbuf, *c );
-            }
-
-            buf_addchar( &outbuf, '\n' );
-            span_t parsed = span_mk( outbuf.read, outbuf.write );
-
-            while ( !span_empty( parsed ) )
-            {
-                int bytes = write( 3, parsed.str, span_len( parsed ) );
-
-                if ( bytes < 0 )
-                    sys_error( "write 3" );
-
-                parsed.str += bytes;
-            }
-
-            buf_clear( &outbuf );
-        }
+        if ( found && !process_line( reader.span, &writer ) )
+            break;
     }
 
     if ( !found )
         error( "did not find the dependency line" );
+
+    writer_flush( &writer );
 }
 
 bool wrap( const char **argv, int *rv )
