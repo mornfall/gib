@@ -133,7 +133,7 @@ span_t span_stem( span_t s )
 
     while ( end > s.str && *--end != '/' )
         if ( *end == '.' )
-            return s.end = end, s;
+            s.end = end;
 
     return s;
 }
