@@ -339,11 +339,8 @@ int main( int argc, const char *argv[] )
     var_add( uname, span_lit( uts.sysname ) );
 
     load_rules( &s.nodes, &s.env, "gib.file" );
-    var_t *var_outpath = env_get( &s.env, span_lit( "outpath" ) );
-    const char *outpath = var_outpath && var_outpath->list ? var_outpath->list->data : 0;
-
-    if ( asprintf( &s.outdir, "%s%sdefault", outpath ?: s.srcdir, outpath ? "" : "/bin." ) < 0 )
-        sys_error( "asprintf" );
+    var_t *var_outdir = env_get( &s.env, span_lit( "outdir" ) );
+    s.outdir = var_outdir && var_outdir->list ? var_outdir->list->data : "build";
 
     char *path_dyn, *path_stamp, *path_debug;
 
