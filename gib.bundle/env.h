@@ -252,20 +252,29 @@ void env_expand( var_t *var, cb_tree *local, cb_tree *global, span_t str, const 
         span_t suffix_match = ref_spec;
         span_t prefix_match = fetch_until( &suffix_match, '*', 0 );
 
-        for ( cb_iterator i = cb_begin_at( &ref_var->set, prefix_match ); !cb_end( &i ); cb_next( &i ) )
+        var_t *prefix_var = var_alloc( span_lit( "temporary" ) );
+        env_expand( prefix_var, local, global, prefix_match, 0 );
+
+        for ( value_t *pmatch = prefix_var->list; pmatch; pmatch = pmatch->next )
         {
-            value_t *val = cb_get( &i );
+            span_t pmatch_str = span_lit( pmatch->data );
 
-            if ( strncmp( val->data, prefix_match.str, span_len( prefix_match ) ) )
-                break;
+            for ( cb_iterator i = cb_begin_at( &ref_var->set, pmatch_str ); !cb_end( &i ); cb_next( &i ) )
+            {
+                value_t *val = cb_get( &i );
 
-            if ( strncmp( val->data + strlen( val->data ) - span_len( suffix_match ),
-                          suffix_match.str, span_len( suffix_match ) ) )
-                continue;
+                if ( strncmp( val->data, pmatch_str.str, span_len( pmatch_str ) ) )
+                    break;
 
-            env_expand_rec( var, local, global, prefix, span_lit( val->data ), suffix );
+                if ( strncmp( val->data + strlen( val->data ) - span_len( suffix_match ),
+                              suffix_match.str, span_len( suffix_match ) ) )
+                    continue;
+
+                env_expand_rec( var, local, global, prefix, span_lit( val->data ), suffix );
+            }
         }
 
+        var_free( prefix_var );
         return;
     }
 
