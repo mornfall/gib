@@ -138,6 +138,16 @@ span_t span_stem( span_t s )
     return s;
 }
 
+span_t env_expand_singleton( cb_tree *local, cb_tree *global, span_t str )
+{
+    var_t *var = env_get( local, str ) ?: env_get( global, str );
+
+    if ( !var || !var->list || var->list->next )
+        error( "expansion '%.*s is not a singleton", span_len( str ), str.str );
+
+    return span_lit( var->list->data );
+}
+
 var_t *env_resolve( cb_tree *local, cb_tree *global, span_t spec, bool *autovivify )
 {
     span_t sub = spec;
@@ -146,13 +156,7 @@ var_t *env_resolve( cb_tree *local, cb_tree *global, span_t spec, bool *autovivi
     if ( !span_empty( base ) && sub.str[ 0 ] == '$' )
     {
         sub.str ++;
-        var_t *sub_name = env_get( local, sub ) ?: env_get( global, sub );
-
-        if ( !sub_name || !sub_name->list || sub_name->list->next )
-            error( "subscript %.*s.$%.*s is invalid",
-                   span_len( base ), base.str, span_len( sub ), sub.str );
-
-        span_t sub_value = span_lit( sub_name->list->data );
+        span_t sub_value = env_expand_singleton( local, global, sub );
 
         char buffer[ span_len( base ) + span_len( sub_value ) + 2 ], *ptr = buffer;
         ptr = span_copy( ptr, base );
