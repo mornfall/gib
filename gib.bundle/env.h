@@ -207,12 +207,21 @@ void env_expand( var_t *var, cb_tree *local, cb_tree *global, span_t str, const 
         return var_add( var, str );
 
     const char *ref_end = ref + 1;
+    int counter = 0;
 
     if ( *ref_end != '(' )
         goto err;
 
-    while ( ref_end < str.end && *ref_end != ')' )
+    while ( ref_end < str.end )
+    {
+        if ( *ref_end == '(' )
+            ++ counter;
+        if ( *ref_end == ')' )
+            if ( ! -- counter )
+                break;
+
         ++ ref_end;
+    }
 
     span_t prefix = span_mk( str.str, ref );
     span_t ref_name = span_mk( ref + 2, ref_end );
