@@ -18,6 +18,7 @@ struct rl_state /* rule loader */
     cb_tree locals, *globals, templates;
     cb_tree positions;
     cb_tree *nodes;
+    const char *srcdir;
     bool out_set, cmd_set, meta_set;
     bool stanza_started;
     struct rl_stack *stack;
@@ -194,8 +195,17 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
 
         if ( dep )
             for ( ; new; new = new->next )
-                if ( !graph_get( s->nodes, span_lit( new->data ) ) )
+            {
+                char *name = new->data;
+
+                if ( strncmp( name, s->srcdir, strlen( s->srcdir ) ) == 0 )
+                    name += strlen( s->srcdir ) + 1;
+
+                if ( !graph_get( s->nodes, span_lit( name ) ) )
                     rl_error( s, "dep: node for '%s' does not exist", new->data );
+
+                memmove( new->data, name, strlen( name ) + 1 );
+            }
     }
 
     if ( set || let )
@@ -362,6 +372,7 @@ void load_rules( cb_tree *nodes, cb_tree *env, const char *file )
     cb_init( &s.positions );
     s.nodes = nodes;
     s.stack = 0;
+    s.srcdir = env_get( env, span_lit( "srcdir" ) )->list->data;
 
     if ( !reader_init( &s.reader, AT_FDCWD, file ) )
         sys_error( "opening %s", file );
