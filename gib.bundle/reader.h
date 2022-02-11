@@ -33,7 +33,9 @@ bool reader_init( reader_t *r, int dir_fd, const char *file )
 
 bool shift_buffer( reader_t *r )
 {
-    assert( r->fd >= 0 );
+    if ( r->fd < 0 )
+        return false;
+
     assert( r->buffer + r->buffer_use >= r->span.str );
     int delete = r->span.str - r->buffer;
     r->buffer_use -= delete;
