@@ -113,7 +113,11 @@ void load_stamps( cb_tree *nodes, const char *file )
              !fetch_uint( &dirty, 16, &num_dirty ) ||
              !fetch_uint( &cmdhash, 16, &node->cmd_hash ) )
 
-            error( "%s:%d: error reading timestamp(s)", file, r.pos.line );
+            error( "%s:%d: error reading timestamp(s): %.*s %.*s %.*s",
+                    file, r.pos.line,
+                    span_len( updated ), updated.str,
+                    span_len( changed ), changed.str,
+                    span_len( cmdhash ), cmdhash.str );
 
         node->dirty      = num_dirty;
         node->stamp_want = node->stamp_updated;
