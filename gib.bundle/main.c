@@ -16,6 +16,30 @@ void sighandler( int sig )
     _signalled = sig;
 }
 
+typedef enum
+{
+    match_substr, /* substring match on goal name */
+    match_exact   /* exact-matched goal or a variable */
+} match_type_t;
+
+typedef enum
+{
+    match_op_none, /* do nothing */
+    match_op_intersect,
+    match_op_union,
+    match_op_subtract
+} match_op_t;
+
+typedef struct selector
+{
+    match_type_t type;
+    match_op_t op;
+    span_t string;
+    cb_tree matched;
+    bool clear_matched;
+    struct selector *next;
+} selector_t;
+
 typedef struct
 {
     char *srcdir,
@@ -33,6 +57,9 @@ typedef struct
 
     job_t *job_next, *job_last;
     job_t *running[ MAX_FD ];
+
+    selector_t *select_head, *select_tail;
+    cb_tree goals;
 
     int skipped_count;
     int failed_count;
@@ -416,6 +443,13 @@ void monitor( state_t *s )
     time_t started = time( NULL );
     time_t elapsed = 0;
 
+    signal( SIGHUP, sighandler );
+    signal( SIGINT, sighandler );
+    signal( SIGTERM, sighandler );
+
+    signal( SIGPIPE, sighandler ); // ??
+    signal( SIGALRM, sighandler ); // ??
+
     while ( main_loop( s ) )
     {
         elapsed = time( NULL ) - started;
@@ -429,32 +463,151 @@ void monitor( state_t *s )
              s->ok_count, s->failed_count, s->skipped_count, elapsed / 60, elapsed % 60 );
 }
 
-int main( int argc, const char *argv[] )
+void selector_init( selector_t *sel, match_op_t op, match_type_t type, const char *arg )
+{
+    sel->op = op;
+    sel->type = type;
+    sel->string = span_lit( arg );
+}
+
+bool process_option( state_t *s, int ch, const char *arg )
+{
+    selector_t *new = s->select_tail;
+
+    switch ( ch )
+    {
+        /* exact matches (goal or variable name): 'm'atch, 'a'nd, 's'kip */
+        case 'm': selector_init( new, match_op_intersect, match_exact,  arg ); break;
+        case 'a': selector_init( new, match_op_union,     match_exact,  arg ); break;
+        case 's': selector_init( new, match_op_subtract,  match_exact,  arg ); break;
+
+        /* add/remove goals by name substring */
+        case 'M': selector_init( new, match_op_intersect, match_substr, arg ); break;
+        case 'A': selector_init( new, match_op_union,     match_substr, arg ); break;
+        case 'S': selector_init( new, match_op_subtract,  match_substr, arg ); break;
+
+        default: return false;
+    }
+
+    s->select_tail->next = calloc( 1, sizeof( selector_t ) );
+    s->select_tail = s->select_tail->next;
+
+    return true;
+}
+
+void usage() {}
+
+void parse_options( state_t *s, int argc, char *argv[] )
+{
+    int ch;
+
+    s->select_head = s->select_tail = calloc( 1, sizeof( selector_t ) );
+
+    while ( ( ch = getopt( argc, argv, "m:a:s:M:A:S:" ) ) != -1 )
+        if ( !process_option( s, ch, optarg ) )
+            usage(), error( "unknown option -%c", ch );
+
+    for ( int i = optind; i < argc; ++i )
+        process_option( s, 'a', argv[ i ] ); /* union anything without a switch */
+
+    if ( s->select_head == s->select_tail )
+        if ( optind == argc )
+            process_option( s, 'a', "all" );
+}
+
+void selector_fill( state_t *s, selector_t *sel )
+{
+    cb_init( &sel->matched );
+    cb_tree *subset = sel->op == match_op_union ? &s->nodes : &s->goals;
+
+    if ( sel->type == match_substr )
+        for ( cb_iterator i = cb_begin( subset ); !cb_end( &i ); cb_next( &i ) )
+        {
+            sel->clear_matched = true;
+            node_t *node = cb_get( &i );
+            if ( strstr( node->name, sel->string.str ) ) /* sel->string is 0-terminated */
+                cb_insert( &sel->matched, node, VSIZE( node, name ), -1 );
+        }
+    else
+    {
+        if ( cb_contains( &s->nodes, sel->string ) )
+        {
+            sel->clear_matched = true;
+            cb_result r = cb_find( &s->nodes, sel->string );
+            cb_insert( &sel->matched, r.leaf, r.vsize, -1 );
+        }
+        else
+        {
+            var_t *var = env_get( &s->env, sel->string );
+            if ( var )
+                sel->matched = var->set; /* share */
+        }
+    }
+}
+
+void update_goals( state_t *s, selector_t *sel )
+{
+    cb_tree target;
+    cb_init( &target );
+
+    if ( s->goals.root == s->nodes.root && sel->op == match_op_union )
+        sel->op = match_op_intersect;
+
+    if ( sel->op == match_op_union )
+    {
+        for ( cb_iterator i = cb_begin( &sel->matched ); !cb_end( &i ); cb_next( &i ) )
+        {
+            node_t *node = cb_get( &i );
+            cb_insert( &s->goals, node, VSIZE( node, name ), -1 );
+        }
+    }
+    else
+    {
+        for ( cb_iterator i = cb_begin( &s->goals ); !cb_end( &i ); cb_next( &i ) )
+        {
+            node_t *node = cb_get( &i );
+            bool found = cb_contains( &sel->matched, span_lit( node->name ) );
+
+            if ( sel->op == match_op_intersect &&  found ||
+                 sel->op == match_op_subtract  && !found )
+            {
+                cb_insert( &target, node, VSIZE( node, name ), -1 );
+            }
+        }
+
+        if ( s->goals.root != s->nodes.root )
+            cb_clear( &s->goals );
+    }
+
+    s->goals = target;
+}
+
+int main( int argc, char *argv[] )
 {
     state_t s;
 
     state_init( &s );
+    parse_options( &s, argc, argv );
     state_load( &s );
     state_setup_outputs( &s );
 
-    signal( SIGHUP, sighandler );
-    signal( SIGINT, sighandler );
-    signal( SIGTERM, sighandler );
+    cb_init( &s.goals );
+    s.goals = s.nodes; /* share */
 
-    signal( SIGPIPE, sighandler ); // ??
-    signal( SIGALRM, sighandler ); // ??
+    for ( selector_t *sel = s.select_head; sel; sel = sel->next )
+        if ( sel->op != match_op_none )
+        {
+            selector_fill( &s, sel );
+            update_goals( &s, sel );
+        }
 
-    graph_dump( s.debug, &s.nodes );
-
-    for ( int i = 1; i < argc; ++ i )
-        set_goal( &s, argv[ i ] );
-
-    if ( argc == 1 )
-        set_goal( &s, "all" );
+    for ( cb_iterator i = cb_begin( &s.goals ); !cb_end( &i ); cb_next( &i ) )
+        create_jobs( &s, cb_get( &i ) );
 
     for ( cb_iterator i = cb_begin( &s.nodes ); !cb_end( &i ); cb_next( &i ) )
         node_cleanup( &s, cb_get( &i ) );
 
+    graph_dump( s.debug, &s.nodes );
     monitor( &s );
     state_save( &s );
 
