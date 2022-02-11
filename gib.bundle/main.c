@@ -18,9 +18,14 @@ void sighandler( int sig )
 
 typedef struct
 {
-    char *srcdir;
-    char *outdir;
+    char *srcdir,
+         *outdir;
+
     int outdir_fd;
+
+    char *path_dyn,
+         *path_stamp,
+         *path_debug;
 
     cb_tree env;
     cb_tree nodes;
@@ -317,50 +322,120 @@ void set_goal( state_t *s, const char *name )
         error( "goal %s not defined", name );
 }
 
-int main( int argc, const char *argv[] )
+void state_init( state_t *s )
 {
-    state_t s;
-    s.srcdir = getcwd( 0, 0 );
+    s->srcdir = getcwd( 0, 0 );
 
-    cb_init( &s.env );
-    cb_init( &s.nodes );
-    cb_init( &s.jobs );
+    cb_init( &s->env );
+    cb_init( &s->nodes );
+    cb_init( &s->jobs );
 
     struct utsname uts;
+
     if ( uname( &uts ) < 0 )
         sys_error( "uname" );
+
     for ( char *s = uts.sysname; *s != 0; ++s )
         if ( isupper( *s ) )
             *s += 32;
 
-    var_t *srcdir = env_set( &s.env, span_lit( "srcdir" ) );
-    var_add( srcdir, span_lit( s.srcdir ) );
-    var_t *uname = env_set( &s.env, span_lit( "uname" ) );
+    var_t *srcdir = env_set( &s->env, span_lit( "srcdir" ) );
+    var_add( srcdir, span_lit( s->srcdir ) );
+    var_t *uname = env_set( &s->env, span_lit( "uname" ) );
     var_add( uname, span_lit( uts.sysname ) );
 
-    load_rules( &s.nodes, &s.env, "gib.file" );
-    var_t *var_outdir = env_get( &s.env, span_lit( "outdir" ) );
-    s.outdir = var_outdir && var_outdir->list ? var_outdir->list->data : "build";
+    s->outdir = "build";
+    s->failed_count = 0;
+    s->skipped_count = 0;
+    s->ok_count = 0;
+    s->running_count = 0;
+    s->queued_count = 0;
+    s->todo_count = 0;
+    s->running_max = 4;
 
-    char *path_dyn, *path_stamp, *path_debug;
-
-    if ( asprintf( &path_dyn, "%s/gib.dynamic", s.outdir ) < 0 )
-        sys_error( "asprintf" );
-
-    if ( asprintf( &path_stamp, "%s/gib.stamps", s.outdir ) < 0 )
-        sys_error( "asprintf" );
-
-    if ( asprintf( &path_debug, "%s/gib.debug", s.outdir ) < 0 )
-        sys_error( "asprintf" );
-
-    load_dynamic( &s.nodes, path_dyn );
-    load_stamps( &s.nodes, path_stamp );
-
-    s.job_next = 0;
-    s.job_last = 0;
+    s->job_next = NULL;
+    s->job_last = NULL;
 
     for ( int i = 0; i < MAX_FD; ++i )
-        s.running[ i ] = 0;
+        s->running[ i ] = 0;
+}
+
+void state_load( state_t *s )
+{
+    var_t *jobs, *outdir;
+
+    load_rules( &s->nodes, &s->env, "gib.file" );
+
+    if ( ( outdir = env_get( &s->env, span_lit( "outdir" ) ) ) && outdir->list )
+        s->outdir = outdir->list->data;
+
+    if ( ( jobs = env_get( &s->env, span_lit( "jobs" ) ) ) && jobs->list )
+        s->running_max = atoi( jobs->list->data );
+
+    if ( asprintf( &s->path_dyn, "%s/gib.dynamic", s->outdir ) < 0 )
+        sys_error( "asprintf" );
+
+    if ( asprintf( &s->path_stamp, "%s/gib.stamps", s->outdir ) < 0 )
+        sys_error( "asprintf" );
+
+    if ( asprintf( &s->path_debug, "%s/gib.debug", s->outdir ) < 0 )
+        sys_error( "asprintf" );
+
+    load_dynamic( &s->nodes, s->path_dyn );
+    load_stamps( &s->nodes, s->path_stamp );
+}
+
+void state_save( state_t *s )
+{
+    write_stamps( &s->nodes, s->path_stamp );
+    save_dynamic( &s->nodes, s->path_dyn );
+}
+
+void state_destroy( state_t *s )
+{
+    free( s->path_dyn );
+    free( s->path_stamp );
+    free( s->path_debug );
+
+    /* … */
+}
+
+void state_setup_outputs( state_t *s )
+{
+    mkdir( s->outdir, 0777 ); /* ignore errors */
+    s->outdir_fd = open( s->outdir, O_DIRECTORY | O_CLOEXEC );
+
+    if ( s->outdir_fd < 0 )
+        sys_error( "opening output directory %s", s->outdir );
+
+    s->debug = fopen( s->path_debug, "w" );
+}
+
+void monitor( state_t *s )
+{
+    time_t started = time( NULL );
+    time_t elapsed = 0;
+
+    while ( main_loop( s ) )
+    {
+        elapsed = time( NULL ) - started;
+        fprintf( stderr, "%d/%d running + %d/%d queued | %d ok + %d failed | %lld:%02lld elapsed\r",
+                 s->running_count, s->running_max, s->queued_count, s->todo_count - s->running_count,
+                 s->ok_count, s->failed_count, elapsed / 60, elapsed % 60 );
+    }
+
+    elapsed = time( NULL ) - started;
+    fprintf( stderr, "build finished: %d ok, %d failed, %d skipped, %lld:%02lld elapsed\n",
+             s->ok_count, s->failed_count, s->skipped_count, elapsed / 60, elapsed % 60 );
+}
+
+int main( int argc, const char *argv[] )
+{
+    state_t s;
+
+    state_init( &s );
+    state_load( &s );
+    state_setup_outputs( &s );
 
     signal( SIGHUP, sighandler );
     signal( SIGINT, sighandler );
@@ -369,21 +444,6 @@ int main( int argc, const char *argv[] )
     signal( SIGPIPE, sighandler ); // ??
     signal( SIGALRM, sighandler ); // ??
 
-    var_t *jobs = env_get( &s.env, span_lit( "jobs" ) );
-    s.failed_count = 0;
-    s.skipped_count = 0;
-    s.ok_count = 0;
-    s.running_count = 0;
-    s.queued_count = 0;
-    s.todo_count = 0;
-    s.running_max = jobs && jobs->list ? atoi( jobs->list->data ) : 4;
-
-    mkdir( s.outdir, 0777 ); /* ignore errors */
-    s.outdir_fd = open( s.outdir, O_DIRECTORY | O_CLOEXEC );
-    if ( s.outdir_fd < 0 )
-        sys_error( "opening output directory %s", s.outdir );
-
-    s.debug = fopen( path_debug, "w" );
     graph_dump( s.debug, &s.nodes );
 
     for ( int i = 1; i < argc; ++ i )
@@ -395,23 +455,7 @@ int main( int argc, const char *argv[] )
     for ( cb_iterator i = cb_begin( &s.nodes ); !cb_end( &i ); cb_next( &i ) )
         node_cleanup( &s, cb_get( &i ) );
 
-    time_t started = time( NULL );
-    time_t elapsed = 0;
-
-    while ( main_loop( &s ) )
-    {
-        elapsed = time( NULL ) - started;
-        fprintf( stderr, "%d/%d running + %d/%d queued | %d ok + %d failed | %lld:%02lld elapsed\r",
-                 s.running_count, s.running_max, s.queued_count, s.todo_count - s.running_count,
-                 s.ok_count, s.failed_count, elapsed / 60, elapsed % 60 );
-    }
-
-    elapsed = time( NULL ) - started;
-    fprintf( stderr, "build finished: %d ok, %d failed, %d skipped, %lld:%02lld elapsed\n",
-             s.ok_count, s.failed_count, s.skipped_count, elapsed / 60, elapsed % 60 );
-
-    write_stamps( &s.nodes, path_stamp );
-    save_dynamic( &s.nodes, path_dyn );
+    monitor( &s );
 
     return s.failed_count > 0;
 }
