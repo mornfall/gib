@@ -456,6 +456,7 @@ int main( int argc, const char *argv[] )
         node_cleanup( &s, cb_get( &i ) );
 
     monitor( &s );
+    state_save( &s );
 
     return s.failed_count > 0;
 }
