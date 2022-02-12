@@ -26,7 +26,7 @@ void load_manifest( cb_tree *nodes, var_t *src, var_t *dirs, const char *file )
 
         if ( *op.str == 'd' )
         {
-            close( dirfd );
+            if ( close( dirfd ) ) sys_error( "closing fd %d", dirfd );
             span_free( dir );
             dir = span_dup( path );
             if ( ( dirfd = open( dir.str, O_DIRECTORY | O_RDONLY ) ) == -1 )
@@ -59,4 +59,7 @@ void load_manifest( cb_tree *nodes, var_t *src, var_t *dirs, const char *file )
             node->type = src_node;
         }
     }
+
+    if ( close( rootfd ) ) sys_error( "closing fd %d", rootfd );
+    if ( close( dirfd ) )  sys_error( "closing fd %d", dirfd );
 }
