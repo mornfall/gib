@@ -85,7 +85,6 @@ void job_queue( state_t *s, job_t *j )
 
     j->queued = true;
     ++ s->queued_count;
-    cb_clear( &j->node->deps_dyn );
 
     if ( !s->job_next )
         s->job_next = j;
@@ -103,7 +102,10 @@ bool job_start( state_t *s )
 
     job_t *j = s->job_next;
     s->job_next = j->next;
+
+    cb_clear( &j->node->deps_dyn );
     job_fork( j, s->outdir_fd );
+
     s->running_count ++;
     s->queued_count --;
 
