@@ -274,18 +274,19 @@ void create_jobs( state_t *s, node_t *goal )
     if ( var_hash( out->cmd ) != out->cmd_hash )
         out->dirty = true;
 
-    if ( out->stamp_want > out->stamp_updated )
+    if ( out->stamp_want > out->stamp_updated || out->dirty )
     {
         for ( cb_iterator i = cb_begin( &goal->deps ); !cb_end( &i ); cb_next( &i ) )
         {
             node_t *dep = cb_get( &i );
             node_t *dep_out = dep->type == out_node ? dep : 0;
 
-            if ( dep_out && dep_out->stamp_want > dep_out->stamp_updated && !dep_out->failed )
-            {
-                cb_insert( &dep->blocking, goal, VSIZE( goal, name ), -1 );
-                goal->waiting ++;
-            }
+            if ( dep_out && !dep_out->failed )
+                if ( dep_out->stamp_want > dep_out->stamp_updated || dep_out->dirty )
+                {
+                    cb_insert( &dep->blocking, goal, VSIZE( goal, name ), -1 );
+                    goal->waiting ++;
+                }
 
             if ( dep->stamp_changed > out->stamp_updated )
                 out->dirty = true;
