@@ -48,8 +48,7 @@ typedef struct
     int outdir_fd;
 
     char *path_dyn,
-         *path_stamp,
-         *path_debug;
+         *path_stamp;
 
     cb_tree env;
     cb_tree nodes;
@@ -405,9 +404,6 @@ void state_load( state_t *s )
     if ( asprintf( &s->path_stamp, "%s/gib.stamps", s->outdir ) < 0 )
         sys_error( "asprintf" );
 
-    if ( asprintf( &s->path_debug, "%s/gib.debug", s->outdir ) < 0 )
-        sys_error( "asprintf" );
-
     load_dynamic( &s->nodes, s->path_dyn );
     load_stamps( &s->nodes, s->path_stamp );
 }
@@ -422,7 +418,6 @@ void state_destroy( state_t *s )
 {
     free( s->path_dyn );
     free( s->path_stamp );
-    free( s->path_debug );
 
     /* … */
 }
@@ -438,7 +433,12 @@ void state_setup_outputs( state_t *s )
     if ( flock( s->outdir_fd, LOCK_EX | LOCK_NB ) == -1 )
         sys_error( "locking the output directory '%s'", s->outdir );
 
-    s->debug = fopen( s->path_debug, "w" );
+    int debug_fd = openat( s->outdir_fd, "debug", O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0666 );
+
+    if ( debug_fd < 0 )
+        sys_error( "opening %s/debug for writing", s->outdir );
+    else
+        s->debug = fdopen( debug_fd, "w" );
 }
 
 void monitor( state_t *s )
