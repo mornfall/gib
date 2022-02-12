@@ -297,9 +297,14 @@ void rl_for( struct rl_state *s, value_t *cmds, fileline_t pos )
     cb_tree saved;
     cb_init( &saved );
     env_dup( &saved, &s->locals );
-
     var_t *iter = var_alloc( span_lit( "for-iter" ) );
-    env_expand( iter, &s->locals, s->globals, line, 0 );
+
+    while ( !span_empty( line ) )
+    {
+        span_t word = fetch_word( &line );
+        env_expand( iter, &s->locals, s->globals, word, 0 );
+    }
+
     value_t *val = iter->list;
     cmds = cmds->next;
 
