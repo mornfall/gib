@@ -64,7 +64,7 @@ void writer_open( writer_t *w, const char *path )
 
     w->file = path;
     w->ptr = 0;
-    w->fd = open( w->tmp, O_CREAT | O_WRONLY | O_EXCL, 0666 );
+    w->fd = open( w->tmp, O_CREAT | O_WRONLY | O_EXCL | O_CLOEXEC, 0666 );
 
     if ( w->fd < 0 )
         sys_error( "creating %s", w->tmp );

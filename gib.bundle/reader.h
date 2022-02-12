@@ -21,7 +21,7 @@ typedef struct reader
 
 bool reader_init( reader_t *r, int dir_fd, const char *file )
 {
-    r->fd = file ? openat( dir_fd, file, O_RDONLY ) : -1;
+    r->fd = file ? openat( dir_fd, file, O_RDONLY | O_CLOEXEC ) : -1;
     r->span.str = r->span.end = r->buffer;
     r->buffer_use = 0;
 
