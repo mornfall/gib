@@ -3,10 +3,10 @@
 #include "writer.h"
 #include "graph.h"
 
-void save_dynamic( cb_tree *nodes, const char *path )
+void save_dynamic( cb_tree *nodes, int dirfd, const char *path )
 {
     writer_t w;
-    writer_open( &w, path );
+    writer_open( &w, dirfd, path );
 
     for ( cb_iterator i = cb_begin( nodes ); !cb_end( &i ); cb_next( &i ) )
     {
@@ -29,12 +29,12 @@ void save_dynamic( cb_tree *nodes, const char *path )
     writer_close( &w );
 }
 
-void load_dynamic( cb_tree *nodes, const char *path )
+void load_dynamic( cb_tree *nodes, int dirfd, const char *path )
 {
     reader_t r;
     node_t *n = NULL;
 
-    if ( !reader_init( &r, AT_FDCWD, path ) )
+    if ( !reader_init( &r, dirfd, path ) )
     {
         if ( errno == ENOENT )
             return;
