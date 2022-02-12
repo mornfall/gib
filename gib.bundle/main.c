@@ -47,8 +47,6 @@ typedef struct
 
     int outdir_fd;
 
-    char *path_stamp;
-
     cb_tree env;
     cb_tree nodes;
     cb_tree jobs;
@@ -418,23 +416,18 @@ void state_load( state_t *s )
     if ( ( jobs = env_get( &s->env, span_lit( "jobs" ) ) ) && jobs->list )
         s->running_max = atoi( jobs->list->data );
 
-    if ( asprintf( &s->path_stamp, "%s/gib.stamps", s->outdir ) < 0 )
-        sys_error( "asprintf" );
-
     load_dynamic( &s->nodes, s->outdir_fd, "gib.dynamic" );
-    load_stamps( &s->nodes, s->path_stamp );
+    load_stamps( &s->nodes, s->outdir_fd, "gib.stamps" );
 }
 
 void state_save( state_t *s )
 {
-    write_stamps( &s->nodes, s->path_stamp );
+    write_stamps( &s->nodes, s->outdir_fd, "gib.stamps" );
     save_dynamic( &s->nodes, s->outdir_fd, "gib.dynamic" );
 }
 
 void state_destroy( state_t *s )
 {
-    free( s->path_stamp );
-
     /* … */
 }
 

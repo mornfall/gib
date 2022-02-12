@@ -61,10 +61,10 @@ void load_dynamic( cb_tree *nodes, int dirfd, const char *path )
     }
 }
 
-void write_stamps( cb_tree *nodes, const char *path )
+void write_stamps( cb_tree *nodes, int dirfd, const char *path )
 {
     writer_t w;
-    writer_open( &w, path );
+    writer_open( &w, dirfd, path );
 
     for ( cb_iterator i = cb_begin( nodes ); !cb_end( &i ); cb_next( &i ) )
     {
@@ -83,11 +83,11 @@ void write_stamps( cb_tree *nodes, const char *path )
     writer_close( &w );
 }
 
-void load_stamps( cb_tree *nodes, const char *file )
+void load_stamps( cb_tree *nodes, int dirfd, const char *file )
 {
     reader_t r;
 
-    if ( !reader_init( &r, AT_FDCWD, file ) )
+    if ( !reader_init( &r, dirfd, file ) )
     {
         if ( errno == ENOENT )
             return;
