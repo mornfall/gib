@@ -386,6 +386,25 @@ void state_init( state_t *s )
         s->running[ i ] = 0;
 }
 
+void state_setup_outputs( state_t *s )
+{
+    mkdir( s->outdir, 0777 ); /* ignore errors */
+    s->outdir_fd = open( s->outdir, O_DIRECTORY | O_CLOEXEC );
+
+    if ( s->outdir_fd < 0 )
+        sys_error( "opening the output directory '%s'", s->outdir );
+
+    if ( flock( s->outdir_fd, LOCK_EX | LOCK_NB ) == -1 )
+        sys_error( "locking the output directory '%s'", s->outdir );
+
+    int debug_fd = openat( s->outdir_fd, "debug", O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0666 );
+
+    if ( debug_fd < 0 )
+        sys_error( "opening %s/debug for writing", s->outdir );
+    else
+        s->debug = fdopen( debug_fd, "w" );
+}
+
 void state_load( state_t *s )
 {
     var_t *jobs, *outdir;
@@ -394,6 +413,8 @@ void state_load( state_t *s )
 
     if ( ( outdir = env_get( &s->env, span_lit( "outdir" ) ) ) && outdir->list )
         s->outdir = outdir->list->data;
+
+    state_setup_outputs( s );
 
     if ( ( jobs = env_get( &s->env, span_lit( "jobs" ) ) ) && jobs->list )
         s->running_max = atoi( jobs->list->data );
@@ -420,25 +441,6 @@ void state_destroy( state_t *s )
     free( s->path_stamp );
 
     /* … */
-}
-
-void state_setup_outputs( state_t *s )
-{
-    mkdir( s->outdir, 0777 ); /* ignore errors */
-    s->outdir_fd = open( s->outdir, O_DIRECTORY | O_CLOEXEC );
-
-    if ( s->outdir_fd < 0 )
-        sys_error( "opening the output directory '%s'", s->outdir );
-
-    if ( flock( s->outdir_fd, LOCK_EX | LOCK_NB ) == -1 )
-        sys_error( "locking the output directory '%s'", s->outdir );
-
-    int debug_fd = openat( s->outdir_fd, "debug", O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0666 );
-
-    if ( debug_fd < 0 )
-        sys_error( "opening %s/debug for writing", s->outdir );
-    else
-        s->debug = fdopen( debug_fd, "w" );
 }
 
 void monitor( state_t *s )
@@ -592,7 +594,6 @@ int main( int argc, char *argv[] )
     state_init( &s );
     parse_options( &s, argc, argv );
     state_load( &s );
-    state_setup_outputs( &s );
 
     cb_init( &s.goals );
     s.goals = s.nodes; /* share */
