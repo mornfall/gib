@@ -162,6 +162,7 @@ void job_cleanup( state_t *s, int fd )
     {
         n->stamp_updated = n->stamp_want;
         n->cmd_hash = var_hash( n->cmd );
+        n->dirty = false;
 
         if ( j->changed )
             n->stamp_changed = n->stamp_want;

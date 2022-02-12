@@ -74,8 +74,8 @@ void write_stamps( cb_tree *nodes, const char *path )
         if ( n->type != out_node )
             continue;
 
-        writer_print( &w, "%08llx %08llx %16llx ",
-                          n->stamp_updated, n->stamp_changed, n->cmd_hash );
+        writer_print( &w, "%08llx %08llx %x %016llx ",
+                          n->stamp_updated, n->stamp_changed, n->dirty, n->cmd_hash );
         writer_append( &w, name );
         writer_append( &w, span_lit( "\n" ) );
     }
@@ -100,7 +100,9 @@ void load_stamps( cb_tree *nodes, const char *file )
         span_t path = r.span;
         span_t updated = fetch_word( &path ),
                changed = fetch_word( &path ),
+               dirty   = fetch_word( &path ),
                cmdhash = fetch_word( &path );
+        int64_t num_dirty;
 
         node_t *node = graph_get( nodes, path );
         if ( !node )
@@ -108,10 +110,12 @@ void load_stamps( cb_tree *nodes, const char *file )
 
         if ( !fetch_int( &updated, 16, &node->stamp_updated ) ||
              !fetch_int( &changed, 16, &node->stamp_changed ) ||
+             !fetch_uint( &dirty, 16, &num_dirty ) ||
              !fetch_uint( &cmdhash, 16, &node->cmd_hash ) )
 
             error( "%s:%d: error reading timestamp(s)", file, r.pos.line );
 
+        node->dirty      = num_dirty;
         node->stamp_want = node->stamp_updated;
     }
 }
