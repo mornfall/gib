@@ -2,6 +2,7 @@ typedef struct
 {
     int fd;
     int ptr;
+    int dirfd;
     const char *file;
     char *tmp;
     char buffer[ BUFFER ];
@@ -57,14 +58,15 @@ void writer_append( writer_t *w, span_t span )
     }
 }
 
-void writer_open( writer_t *w, const char *path )
+void writer_open( writer_t *w, int dirfd, const char *path )
 {
     if ( asprintf( &w->tmp, "%s.%d", path, getpid() ) < 0 )
         sys_error( "asprintf" );
 
+    w->dirfd = dirfd;
     w->file = path;
     w->ptr = 0;
-    w->fd = open( w->tmp, O_CREAT | O_WRONLY | O_EXCL | O_CLOEXEC, 0666 );
+    w->fd = openat( dirfd, w->tmp, O_CREAT | O_WRONLY | O_EXCL | O_CLOEXEC, 0666 );
 
     if ( w->fd < 0 )
         sys_error( "creating %s", w->tmp );
@@ -74,7 +76,7 @@ void writer_close( writer_t *w )
 {
     while ( writer_flush( w ) );
 
-    if ( rename( w->tmp, w->file ) == -1 )
+    if ( renameat( w->dirfd, w->tmp, w->dirfd, w->file ) == -1 )
         sys_error( "renaming %s to %s", w->tmp, w->file );
     close( w->fd );
     free( w->tmp );
