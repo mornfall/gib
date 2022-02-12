@@ -79,10 +79,14 @@ void job_show_result( state_t *s, node_t *n, job_t *j )
 void job_queue( state_t *s, job_t *j )
 {
     assert( !j->queued );
+    assert( j->node->dirty );
 
     fprintf( s->debug, "queue: %s\n", j->name );
+
     j->queued = true;
     ++ s->queued_count;
+    cb_clear( &j->node->deps_dyn );
+
     if ( !s->job_next )
         s->job_next = j;
 
