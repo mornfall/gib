@@ -433,7 +433,10 @@ void state_setup_outputs( state_t *s )
     s->outdir_fd = open( s->outdir, O_DIRECTORY | O_CLOEXEC );
 
     if ( s->outdir_fd < 0 )
-        sys_error( "opening output directory %s", s->outdir );
+        sys_error( "opening the output directory '%s'", s->outdir );
+
+    if ( flock( s->outdir_fd, LOCK_EX | LOCK_NB ) == -1 )
+        sys_error( "locking the output directory '%s'", s->outdir );
 
     s->debug = fopen( s->path_debug, "w" );
 }
