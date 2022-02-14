@@ -463,23 +463,26 @@ void selector_init( selector_t *sel, match_op_t op, match_type_t type, const cha
     sel->string = span_lit( arg );
 }
 
-bool process_option( state_t *s, int ch, const char *arg )
+bool process_goal( state_t *s, const char *arg )
 {
     selector_t *new = s->select_tail;
+    match_type_t type = match_exact;
+    int skip = 0;
 
-    switch ( ch )
+    if ( strlen( arg ) >= 2 && arg[ 1 ] == '~' )
+        type = match_substr, ++ skip;
+
+    switch ( arg[ 0 ] )
     {
         /* exact matches (goal or variable name): 'm'atch, 'a'nd, 's'kip */
-        case 'm': selector_init( new, match_op_intersect, match_exact,  arg ); break;
-        case 'a': selector_init( new, match_op_union,     match_exact,  arg ); break;
-        case 's': selector_init( new, match_op_subtract,  match_exact,  arg ); break;
+        case ':': selector_init( new, match_op_intersect, type,         arg + 1 + skip ); break;
+        case '+': selector_init( new, match_op_union,     type,         arg + 1 + skip ); break;
+        case '/': selector_init( new, match_op_subtract,  type,         arg + 1 + skip ); break;
+        case '%': selector_init( new, match_op_intersect, match_substr, arg + 1 ); break;
 
-        /* add/remove goals by name substring */
-        case 'M': selector_init( new, match_op_intersect, match_substr, arg ); break;
-        case 'A': selector_init( new, match_op_union,     match_substr, arg ); break;
-        case 'S': selector_init( new, match_op_subtract,  match_substr, arg ); break;
-
-        default: return false;
+        default: selector_init( new, match_op_union,
+                                arg[ 0 ] == '~' ? match_substr : match_exact,
+                                arg + ( arg[ 0 ] == '~' ) ); break;
     }
 
     s->select_tail->next = calloc( 1, sizeof( selector_t ) );
@@ -496,16 +499,11 @@ void parse_options( state_t *s, int argc, char *argv[] )
 
     s->select_head = s->select_tail = calloc( 1, sizeof( selector_t ) );
 
-    while ( ( ch = getopt( argc, argv, "m:a:s:M:A:S:" ) ) != -1 )
-        if ( !process_option( s, ch, optarg ) )
-            usage(), error( "unknown option -%c", ch );
-
-    for ( int i = optind; i < argc; ++i )
-        process_option( s, 'a', argv[ i ] ); /* union anything without a switch */
+    for ( int i = 1; i < argc; ++i )
+        process_goal( s, argv[ i ] );
 
     if ( s->select_head == s->select_tail )
-        if ( optind == argc )
-            process_option( s, 'a', "all" );
+        process_goal( s, "all" );
 }
 
 void selector_fill( state_t *s, selector_t *sel )
