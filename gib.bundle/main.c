@@ -532,6 +532,8 @@ void selector_fill( state_t *s, selector_t *sel )
             var_t *var = env_get( &s->env, sel->string );
             if ( var )
                 sel->matched = var->set; /* share */
+            else
+                error( "nothing is known about '%s'", sel->string );
         }
     }
 }
