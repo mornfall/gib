@@ -152,6 +152,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
                 rl_error( s, "duplicated node %s", val->data );
 
             manifest->type = src_node;
+            manifest->frozen = true;
             graph_do_stat( manifest );
             load_manifest( s->nodes, src, dir, val->data );
         }
