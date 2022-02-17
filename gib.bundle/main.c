@@ -46,7 +46,8 @@ typedef struct
          *outdir;
 
     int outdir_fd,
-        logdir_fd;
+        logdir_fd,
+        faildir_fd;
 
     cb_tree env;
     cb_tree nodes;
@@ -88,6 +89,8 @@ void job_show_result( state_t *s, node_t *n, job_t *j )
         for ( char *i = n->name; *i; ++p, ++i )
             *p = ( *i == ' ' || *i == '/' ) ? '_' : *i;
         strcpy( p, ".txt" );
+
+        linkat( s->logdir_fd, filename, s->faildir_fd, filename, 0 );
 
         reader_t log;
 
@@ -389,7 +392,9 @@ void state_setup_outputs( state_t *s )
     s->outdir_fd = open( s->outdir, O_DIRECTORY | O_CLOEXEC );
 
     mkdirat( s->outdir_fd, "_log", 0777 );
+    mkdirat( s->outdir_fd, "_failed", 0777 );
     s->logdir_fd  = openat( s->outdir_fd, "_log",    O_DIRECTORY | O_CLOEXEC );
+    s->faildir_fd = openat( s->outdir_fd, "_failed", O_DIRECTORY | O_CLOEXEC );
 
     if ( s->outdir_fd < 0 )
         sys_error( "opening the output directory '%s'", s->outdir );
