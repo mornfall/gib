@@ -54,10 +54,7 @@ void load_dynamic( cb_tree *nodes, int dirfd, const char *path )
             n = graph_add( nodes, r.span );
 
         if ( span_eq( word, "dep" ) && n )
-        {
             graph_add_dep( nodes, n, r.span, true );
-            graph_add_dep( nodes, n, r.span, false );
-        }
     }
 }
 
