@@ -82,12 +82,12 @@ void state_load( state_t *s )
 {
     var_t *jobs, *outdir;
 
+    queue_init( &s->queue, &s->nodes, s->srcdir );
     load_rules( &s->nodes, &s->env, "gib.file" );
 
     if ( ( outdir = env_get( &s->env, span_lit( "outdir" ) ) ) && outdir->list )
         s->outdir = outdir->list->data;
 
-    queue_init( &s->queue, &s->nodes, s->srcdir );
     queue_set_outdir( &s->queue, s->outdir );
     state_setup_debug( s );
 
