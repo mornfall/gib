@@ -90,16 +90,16 @@ node_t *graph_add( cb_tree *t, span_t name )
     return node;
 }
 
-node_t *graph_add_src( cb_tree *t, span_t name )
+node_t *graph_find_file( cb_tree *nodes, span_t name )
 {
-    node_t *n = graph_add( t, name );
+    node_t *n = graph_add( nodes, name );
 
-    if ( n->frozen )
-        error( "duplicated node '%.*s'", span_len( name ), name.str );
-
-    n->type   = src_node;
-    n->frozen = true;
-    graph_do_stat( n );
+    if ( !n->frozen )
+    {
+        graph_do_stat( n );
+        n->type   = src_node;
+        n->frozen = true;
+    }
 
     return n;
 }

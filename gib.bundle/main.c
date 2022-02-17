@@ -69,8 +69,13 @@ void state_load( state_t *s )
     var_t *jobs_var, *outdir_var;
     const char *outdir = "build";
 
+    int srcdir_fd = open( ".", O_DIRECTORY | O_CLOEXEC );
+    if ( srcdir_fd < 0 )
+        sys_error( "opening source directory" );
+
     queue_init( &s->queue, &s->nodes, s->srcdir );
-    load_rules( &s->nodes, &s->env, "gib.file" );
+    load_rules( &s->nodes, &s->env, srcdir_fd, -1,
+                graph_find_file( &s->nodes, span_lit( "gib.file" ) ) );
 
     if ( ( outdir_var = env_get( &s->env, span_lit( "outdir" ) ) ) && outdir_var->list )
         outdir = outdir_var->list->data;

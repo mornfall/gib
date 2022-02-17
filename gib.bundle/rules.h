@@ -23,9 +23,11 @@ struct rl_state /* rule loader */
     bool out_set, cmd_set, meta_set;
     bool stanza_started;
     struct rl_stack *stack;
+
+    int srcdir_fd, outdir_fd;
 };
 
-void load_rules( cb_tree *nodes, cb_tree *env, const char *file );
+void load_rules( cb_tree *nodes, cb_tree *env, int srcdir_fd, int outdir_fd, node_t *node );
 
 void rl_error( struct rl_state *s, const char *reason, ... )
 {
@@ -117,6 +119,11 @@ void rl_stanza_end( struct rl_state *s )
 
 void rl_replay( struct rl_state *s, value_t *cmds, fileline_t pos );
 
+int rl_dirfd( struct rl_state *s, node_t *node )
+{
+    return node->type == out_node ? s->outdir_fd : s->srcdir_fd;
+}
+
 void rl_command( struct rl_state *s, span_t cmd, span_t args )
 {
     if ( span_eq( cmd, "cmd" ) )
@@ -147,7 +154,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
 
         for ( value_t *val = path->list; val; val = val->next )
         {
-            graph_add_src( s->nodes, span_lit( val->data ) );
+            graph_find_file( s->nodes, span_lit( val->data ) );
             load_manifest( s->nodes, src, dir, val->data );
         }
     }
@@ -258,7 +265,8 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
 
         for ( value_t *val = files->list; val; val = val->next )
             if ( !ignore_missing || access( val->data, R_OK ) != -1 )
-                load_rules( s->nodes, s->globals, val->data );
+                load_rules( s->nodes, s->globals, s->srcdir_fd, s->outdir_fd,
+                            graph_find_file( s->nodes, span_lit( val->data ) ) );
     }
 
     s->stanza_started = true;
@@ -369,7 +377,7 @@ void rl_statement( struct rl_state *s )
     span_free( args );
 }
 
-void load_rules( cb_tree *nodes, cb_tree *env, const char *file )
+void load_rules( cb_tree *nodes, cb_tree *env, int srcdir_fd, int outdir_fd, node_t *node )
 {
     struct rl_state s;
 
@@ -377,13 +385,15 @@ void load_rules( cb_tree *nodes, cb_tree *env, const char *file )
     cb_init( &s.locals );
     cb_init( &s.templates );
     cb_init( &s.positions );
+    s.node = node;
     s.nodes = nodes;
     s.stack = 0;
     s.srcdir = env_get( env, span_lit( "srcdir" ) )->list->data;
-    s.node = graph_add_src( nodes, span_lit( file ) );
+    s.srcdir_fd = srcdir_fd;
+    s.outdir_fd = outdir_fd;
 
-    if ( !reader_init( &s.reader, AT_FDCWD, file ) )
-        sys_error( "opening %s", file );
+    if ( !reader_init( &s.reader, rl_dirfd( &s, node ), node->name ) )
+        sys_error( "opening %s %s", node->type == out_node ? "output" : "source", node->name );
 
     rl_stanza_clear( &s );
 
