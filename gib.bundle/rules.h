@@ -206,7 +206,9 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
                 if ( strncmp( name, s->srcdir, strlen( s->srcdir ) ) == 0 )
                     name += strlen( s->srcdir ) + 1;
 
-                if ( !graph_get( s->nodes, span_lit( name ) ) )
+                node_t *dep = graph_get( s->nodes, span_lit( name ) );
+
+                if ( !dep || !dep->frozen )
                     rl_error( s, "dep: node for '%s' does not exist", new->data );
 
                 memmove( new->data, name, strlen( name ) + 1 );
