@@ -2,14 +2,13 @@
 #include "reader.h"
 #include <sys/stat.h>
 
-void load_manifest( cb_tree *nodes, var_t *src, var_t *dirs, const char *file )
+void load_manifest( cb_tree *nodes, var_t *src, var_t *dirs, int rootfd, const char *file )
 {
     reader_t r;
 
-    if ( !reader_init( &r, AT_FDCWD, file ) )
+    if ( !reader_init( &r, rootfd, file ) )
         sys_error( "opening %s", file );
 
-    int rootfd = open( ".", O_DIRECTORY | O_RDONLY );
     int dirfd = dup( rootfd );
     span_t dir = span_dup( span_lit( "" ) );
 
@@ -61,6 +60,5 @@ void load_manifest( cb_tree *nodes, var_t *src, var_t *dirs, const char *file )
         }
     }
 
-    if ( close( rootfd ) ) sys_error( "closing fd %d", rootfd );
     if ( close( dirfd ) )  sys_error( "closing fd %d", dirfd );
 }

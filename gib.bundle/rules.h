@@ -154,8 +154,8 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
 
         for ( value_t *val = path->list; val; val = val->next )
         {
-            graph_find_file( s->nodes, span_lit( val->data ) );
-            load_manifest( s->nodes, src, dir, val->data );
+            node_t *n = graph_find_file( s->nodes, span_lit( val->data ) );
+            load_manifest( s->nodes, src, dir, rl_dirfd( s, n ), val->data );
         }
     }
 
