@@ -10,6 +10,7 @@ f critbit.h
 f env.h
 f graph.h
 f job.h
+f queue.h
 f manifest.h
 f outdb.h
 f rules.h
