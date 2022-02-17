@@ -51,7 +51,7 @@ void load_dynamic( cb_tree *nodes, int dirfd, const char *path )
         span_t word = fetch_word( &r.span );
 
         if ( span_eq( word, "out" ) )
-            n = graph_get( nodes, r.span ) ?: graph_add( nodes, r.span );
+            n = graph_add( nodes, r.span );
 
         if ( span_eq( word, "dep" ) && n )
         {
@@ -104,9 +104,7 @@ void load_stamps( cb_tree *nodes, int dirfd, const char *file )
                cmdhash = fetch_word( &path );
         int64_t num_dirty;
 
-        node_t *node = graph_get( nodes, path );
-        if ( !node )
-            node = graph_add( nodes, path );
+        node_t *node = graph_add( nodes, path );
 
         if ( !fetch_int( &updated, 16, &node->stamp_updated ) ||
              !fetch_int( &changed, 16, &node->stamp_changed ) ||

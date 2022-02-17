@@ -11,6 +11,7 @@ typedef struct node
     bool visited:1;
     bool failed:1;
     bool dirty:1;
+    bool frozen:1;
     int waiting;
 
     /* Stamps govern what needs to be built:
@@ -77,9 +78,16 @@ node_t *graph_put( cb_tree *t, node_t *node, int len )
 
 node_t *graph_add( cb_tree *t, span_t name )
 {
-    node_t *node = calloc( 1, VSIZE( node, name ) + span_len( name ) + 1 );
-    span_copy( node->name, name );
-    return graph_put( t, node, span_len( name ) ) ?: ( free( node ), ( node_t * ) 0 );
+    node_t *node = graph_get( t, name );
+
+    if ( !node )
+    {
+        node = calloc( 1, VSIZE( node, name ) + span_len( name ) + 1 );
+        span_copy( node->name, name );
+        graph_put( t, node, span_len( name ) );
+    }
+
+    return node;
 }
 
 void graph_add_dep( cb_tree *t, node_t *n, span_t name, bool dyn )
