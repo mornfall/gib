@@ -33,9 +33,8 @@ void log_argv( int fd, char **argv )
     free( buf );
 }
 
-void job_exec( job_t *j, int dirfd, int childfd )
+void job_exec( job_t *j, int outdir_fd, int logdir_fd, int childfd )
 {
-    const char *log_dir = "_log";
     int argv_size = 16, i = 0;
     char **argv = malloc( argv_size * sizeof( char * ) );
 
@@ -50,24 +49,19 @@ void job_exec( job_t *j, int dirfd, int childfd )
 
     argv[ i ] = 0;
 
-    fchdir( dirfd );
-    mkdir( log_dir, 0777 );
+    fchdir( outdir_fd );
+    char logname[ strlen( j->name ) + 5 ], *p = logname;
 
-    char *path;
+    for ( char *i = j->name; *i; ++p, ++i )
+        *p = *i == '/' || *i == ' ' ? '_' : *i;
+    p = stpcpy( p, ".txt" );
 
-    if ( asprintf( &path, "%s/%s.txt", log_dir, j->name ) == -1 )
-        sys_error( "asprintf" );
-
-    for ( char *c = path + strlen( log_dir ) + 1; *c; ++c )
-        if ( *c == '/' || *c == ' ' )
-            *c = '_';
-
-    unlink( path );
-    int logfd = open( path, O_CREAT | O_WRONLY | O_EXCL | O_CLOEXEC, 0666 );
+    unlinkat( logdir_fd, logname, 0 );
+    int logfd = openat( logdir_fd, logname, O_CREAT | O_WRONLY | O_EXCL | O_CLOEXEC, 0666 );
     int nullfd = open( "/dev/null", O_RDONLY | O_CLOEXEC );
 
     if ( logfd < 0 )
-        sys_error( "opening logfile %s", path );
+        sys_error( "opening logfile %s", logname );
 
     if ( nullfd < 0 )
         sys_error( "opening /dev/null" );
@@ -82,7 +76,7 @@ void job_exec( job_t *j, int dirfd, int childfd )
     sys_error( "execv %s (job %s):", argv[ 0 ], j->name );
 }
 
-void job_fork( job_t *j, int dirfd )
+void job_fork( job_t *j, int outdir_fd, int logdir_fd )
 {
     int fds[ 2 ];
 
@@ -93,7 +87,7 @@ void job_fork( job_t *j, int dirfd )
     j->pid = fork();
 
     if ( j->pid == 0 ) /* child */
-        job_exec( j, dirfd, fds[ 1 ] );
+        job_exec( j, outdir_fd, logdir_fd, fds[ 1 ] );
 
     close( fds[ 1 ] );
 

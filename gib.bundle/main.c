@@ -45,7 +45,8 @@ typedef struct
     char *srcdir,
          *outdir;
 
-    int outdir_fd;
+    int outdir_fd,
+        logdir_fd;
 
     cb_tree env;
     cb_tree nodes;
@@ -83,16 +84,15 @@ void job_show_result( state_t *s, node_t *n, job_t *j )
     if ( !_signalled && n->failed || changed && j && j->warned )
     {
         fprintf( stderr, "\033[J" );
-        char path[ strlen( n->name ) + 13 ];
-        char *p = stpcpy( path, "_log/" );
+        char filename[ strlen( n->name ) + 5 ], *p = filename;
         for ( char *i = n->name; *i; ++p, ++i )
             *p = ( *i == ' ' || *i == '/' ) ? '_' : *i;
         strcpy( p, ".txt" );
 
         reader_t log;
 
-        if ( !reader_init( &log, s->outdir_fd, path ) )
-            sys_error( "opening logfile %s", path );
+        if ( !reader_init( &log, s->logdir_fd, filename ) )
+            sys_error( "opening logfile %s", filename );
 
         while ( read_line( &log ) )
             fprintf( stderr, " │ %.*s\n", span_len( log.span ), log.span.str );
@@ -132,7 +132,7 @@ bool job_start( state_t *s )
     s->job_next = j->next;
 
     cb_clear( &j->node->deps_dyn );
-    job_fork( j, s->outdir_fd );
+    job_fork( j, s->outdir_fd, s->logdir_fd );
 
     s->running_count ++;
     s->queued_count --;
@@ -387,6 +387,9 @@ void state_setup_outputs( state_t *s )
 {
     mkdir( s->outdir, 0777 ); /* ignore errors */
     s->outdir_fd = open( s->outdir, O_DIRECTORY | O_CLOEXEC );
+
+    mkdirat( s->outdir_fd, "_log", 0777 );
+    s->logdir_fd  = openat( s->outdir_fd, "_log",    O_DIRECTORY | O_CLOEXEC );
 
     if ( s->outdir_fd < 0 )
         sys_error( "opening the output directory '%s'", s->outdir );
