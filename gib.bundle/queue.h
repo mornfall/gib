@@ -41,10 +41,26 @@ typedef struct
     int running_max;
 } queue_t;
 
-void queue_set_outdir( queue_t *q, const char *dir )
+
+void queue_set_outdir( queue_t *q, cb_tree *env )
 {
+    var_t *var = env_get( env, span_lit( "outdir" ) );
+
+    if ( !var )
+    {
+        var = env_set( env, span_lit( "outdir" ) );
+        var_add( var, span_lit( "build" ) );
+    }
+
+    var->frozen = true;
+
+    if ( !var->list || var->list->next )
+        error( "variable 'outdir' must be a singleton" );
+
+    const char *dir = var->list->data;
+
     if ( q->outdir_fd >= 0 )
-        error( "setting output to '%s': output directory already set", dir );
+        return;
 
     mkdir( dir, 0777 ); /* ignore errors */
     q->outdir_fd = open( dir, O_DIRECTORY | O_CLOEXEC );

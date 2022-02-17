@@ -25,11 +25,11 @@ struct rl_state /* rule loader */
     bool stanza_started;
     struct rl_stack *stack;
 
-    int srcdir_fd, outdir_fd;
+    int srcdir_fd;
     queue_t *queue;
 };
 
-void load_rules( cb_tree *nodes, cb_tree *env, queue_t *q, int srcdir_fd, int outdir_fd, node_t *node );
+void load_rules( cb_tree *nodes, cb_tree *env, queue_t *q, int srcdir_fd, node_t *node );
 
 void rl_error( struct rl_state *s, const char *reason, ... )
 {
@@ -70,6 +70,24 @@ void rl_set_position( struct rl_state *s, span_t what )
     *pos = s->reader.pos;
     span_copy( pos->name, what );
     cb_insert( &s->positions, pos, VSIZE( pos, name ), span_len( what ) );
+}
+
+void rl_get_file( struct rl_state *s, node_t *n )
+{
+    if ( n->type != out_node )
+        return; /* nothing to be done */
+
+    queue_set_outdir( s->queue, s->globals );
+    queue_add_goal( s->queue, n->name );
+    queue_monitor( s->queue, false );
+
+    if ( s->queue->failed_count != 0 )
+        rl_error( s, "error building %s", n->name );
+}
+
+int rl_dirfd( struct rl_state *s, node_t *node )
+{
+    return node->type == out_node ? s->queue->outdir_fd : s->srcdir_fd;
 }
 
 void rl_stanza_clear( struct rl_state *s )
@@ -121,11 +139,6 @@ void rl_stanza_end( struct rl_state *s )
 
 void rl_replay( struct rl_state *s, value_t *cmds, fileline_t pos );
 
-int rl_dirfd( struct rl_state *s, node_t *node )
-{
-    return node->type == out_node ? s->outdir_fd : s->srcdir_fd;
-}
-
 void rl_command( struct rl_state *s, span_t cmd, span_t args )
 {
     if ( span_eq( cmd, "cmd" ) )
@@ -157,6 +170,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
         for ( value_t *val = path->list; val; val = val->next )
         {
             node_t *n = graph_find_file( s->nodes, span_lit( val->data ) );
+            rl_get_file( s, n );
             load_manifest( s->nodes, src, dir, rl_dirfd( s, n ), val->data );
         }
     }
@@ -267,8 +281,11 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
 
         for ( value_t *val = files->list; val; val = val->next )
             if ( !ignore_missing || access( val->data, R_OK ) != -1 )
-                load_rules( s->nodes, s->globals, s->queue, s->srcdir_fd, s->outdir_fd,
-                            graph_find_file( s->nodes, span_lit( val->data ) ) );
+            {
+                node_t *n = graph_find_file( s->nodes, span_lit( val->data ) );
+                rl_get_file( s, n );
+                load_rules( s->nodes, s->globals, s->queue, s->srcdir_fd, n );
+            }
     }
 
     s->stanza_started = true;
@@ -379,7 +396,7 @@ void rl_statement( struct rl_state *s )
     span_free( args );
 }
 
-void load_rules( cb_tree *nodes, cb_tree *env, queue_t *q, int srcdir_fd, int outdir_fd, node_t *node )
+void load_rules( cb_tree *nodes, cb_tree *env, queue_t *q, int srcdir_fd, node_t *node )
 {
     struct rl_state s;
 
@@ -393,7 +410,6 @@ void load_rules( cb_tree *nodes, cb_tree *env, queue_t *q, int srcdir_fd, int ou
     s.stack = 0;
     s.srcdir = env_get( env, span_lit( "srcdir" ) )->list->data;
     s.srcdir_fd = srcdir_fd;
-    s.outdir_fd = outdir_fd;
 
     if ( !reader_init( &s.reader, rl_dirfd( &s, node ), node->name ) )
         sys_error( "opening %s %s", node->type == out_node ? "output" : "source", node->name );
