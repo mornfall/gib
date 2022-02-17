@@ -140,6 +140,19 @@ void rl_replay( struct rl_state *s, value_t *cmds, fileline_t pos );
 
 void rl_command( struct rl_state *s, span_t cmd, span_t args )
 {
+    bool let = false, set = false, split = false, add = false;
+    bool sub = false, ignore_missing = false;
+    bool dep = span_eq( cmd, "dep" );
+
+    if      ( span_eq( cmd, "set=" ) )  set = true, split = false;
+    else if ( span_eq( cmd, "set" ) ) set = true, split = true;
+    else if ( span_eq( cmd, "let=" ) )  let = true, split = false;
+    else if ( span_eq( cmd, "let" ) ) let = true, split = true;
+    else if ( span_eq( cmd, "add=" ) )  add = true, split = false;
+    else if ( span_eq( cmd, "add" ) ) add = true, split = true;
+    else if ( span_eq( cmd, "sub" ) )  sub = true, ignore_missing = false;
+    else if ( span_eq( cmd, "sub?" ) ) sub = true, ignore_missing = true;
+
     if ( span_eq( cmd, "cmd" ) )
     {
         s->cmd_set = true;
@@ -155,7 +168,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
             rl_error( s, "empty command" );
     }
 
-    if ( span_eq( cmd, "src" ) )
+    else if ( span_eq( cmd, "src" ) )
     {
         span_t src_name = fetch_word( &args );
         span_t dir_name = fetch_word( &args );
@@ -174,7 +187,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
         }
     }
 
-    if ( span_eq( cmd, "out" ) || span_eq( cmd, "meta" ) )
+    else if ( span_eq( cmd, "out" ) || span_eq( cmd, "meta" ) )
     {
         if ( span_eq( cmd, "out" ) ) s->out_set = true; else s->meta_set = true;
         var_t *out = env_set( &s->locals, span_lit( "out" ) );
@@ -183,16 +196,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
             rl_error( s, "out must expand into exactly one item" );
     }
 
-    bool let = false, set = false, split = false, add = false;
-    bool dep = span_eq( cmd, "dep" );
-    if ( span_eq( cmd, "set=" ) )  set = true, split = false;
-    if ( span_eq( cmd, "set" ) ) set = true, split = true;
-    if ( span_eq( cmd, "let=" ) )  let = true, split = false;
-    if ( span_eq( cmd, "let" ) ) let = true, split = true;
-    if ( span_eq( cmd, "add=" ) )  add = true, split = false;
-    if ( span_eq( cmd, "add" ) ) add = true, split = true;
-
-    if ( add || dep )
+    else if ( add || dep )
     {
         span_t name = dep ? span_lit( "dep" ) : fetch_word( &args );
         bool autovivify = true;
@@ -232,7 +236,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
             }
     }
 
-    if ( set || let )
+    else if ( set || let )
     {
         span_t name = fetch_word( &args );
 
@@ -255,7 +259,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
                 env_expand( var, &s->locals, s->globals, args, 0 );
     }
 
-    if ( span_eq( cmd, "use" ) )
+    else if ( span_eq( cmd, "use" ) )
     {
         span_t name = fetch_word( &args );
         var_t *var = env_get( &s->templates, name );
@@ -268,12 +272,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
         rl_replay( s, var->list, *pos );
     }
 
-    bool sub = false, ignore_missing = false;
-
-    if ( span_eq( cmd, "sub" ) )  sub = true, ignore_missing = false;
-    if ( span_eq( cmd, "sub?" ) ) sub = true, ignore_missing = true;
-
-    if ( sub )
+    else if ( sub )
     {
         var_t *files = var_alloc( span_lit( "sub-files" ) );
         env_expand( files, &s->locals, s->globals, args, 0 );
