@@ -147,14 +147,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
 
         for ( value_t *val = path->list; val; val = val->next )
         {
-            node_t *manifest = graph_add( s->nodes, span_lit( val->data ) );
-
-            if ( manifest->frozen )
-                rl_error( s, "duplicated node %s", val->data );
-
-            manifest->type = src_node;
-            manifest->frozen = true;
-            graph_do_stat( manifest );
+            graph_add_src( s->nodes, span_lit( val->data ) );
             load_manifest( s->nodes, src, dir, val->data );
         }
     }
@@ -387,16 +380,10 @@ void load_rules( cb_tree *nodes, cb_tree *env, const char *file )
     s.nodes = nodes;
     s.stack = 0;
     s.srcdir = env_get( env, span_lit( "srcdir" ) )->list->data;
-    s.node = graph_add( nodes, span_lit( file ) );
+    s.node = graph_add_src( nodes, span_lit( file ) );
 
     if ( !reader_init( &s.reader, AT_FDCWD, file ) )
         sys_error( "opening %s", file );
-
-    if ( s.node->frozen )
-        error( "duplicated node %s", file );
-
-    graph_do_stat( s.node );
-    s.node->frozen = true;
 
     rl_stanza_clear( &s );
 

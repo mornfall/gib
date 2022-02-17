@@ -90,6 +90,20 @@ node_t *graph_add( cb_tree *t, span_t name )
     return node;
 }
 
+node_t *graph_add_src( cb_tree *t, span_t name )
+{
+    node_t *n = graph_add( t, name );
+
+    if ( n->frozen )
+        error( "duplicated node '%.*s'", span_len( name ), name.str );
+
+    n->type   = src_node;
+    n->frozen = true;
+    graph_do_stat( n );
+
+    return n;
+}
+
 void graph_add_dep( cb_tree *t, node_t *n, span_t name, bool dyn )
 {
     node_t *dep = graph_get( t, name );
