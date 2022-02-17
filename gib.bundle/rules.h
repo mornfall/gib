@@ -18,6 +18,7 @@ struct rl_state /* rule loader */
     cb_tree locals, *globals, templates;
     cb_tree positions;
     cb_tree *nodes;
+    node_t *node;
     const char *srcdir;
     bool out_set, cmd_set, meta_set;
     bool stanza_started;
@@ -386,12 +387,16 @@ void load_rules( cb_tree *nodes, cb_tree *env, const char *file )
     s.nodes = nodes;
     s.stack = 0;
     s.srcdir = env_get( env, span_lit( "srcdir" ) )->list->data;
+    s.node = graph_add( nodes, span_lit( file ) );
 
     if ( !reader_init( &s.reader, AT_FDCWD, file ) )
         sys_error( "opening %s", file );
 
-    if ( graph_add( nodes, span_lit( file ) )->frozen )
+    if ( s.node->frozen )
         error( "duplicated node %s", file );
+
+    graph_do_stat( s.node );
+    s.node->frozen = true;
 
     rl_stanza_clear( &s );
 
