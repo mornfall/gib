@@ -41,7 +41,6 @@ typedef struct
     int running_max;
 } queue_t;
 
-
 void queue_set_outdir( queue_t *q, cb_tree *env )
 {
     var_t *var = env_get( env, span_lit( "outdir" ) );
@@ -64,6 +63,11 @@ void queue_set_outdir( queue_t *q, cb_tree *env )
 
     mkdir( dir, 0777 ); /* ignore errors */
     q->outdir_fd = open( dir, O_DIRECTORY | O_CLOEXEC );
+
+    mkdirat( q->outdir_fd, "_log", 0777 );
+    mkdirat( q->outdir_fd, "_failed", 0777 );
+    q->logdir_fd  = openat( q->outdir_fd, "_log",    O_DIRECTORY | O_CLOEXEC );
+    q->faildir_fd = openat( q->outdir_fd, "_failed", O_DIRECTORY | O_CLOEXEC );
 
     if ( q->outdir_fd < 0 )
         sys_error( "opening the output directory '%s'", dir );
@@ -95,12 +99,12 @@ void queue_show_result( queue_t *q, node_t *n, job_t *j )
             *p = ( *i == ' ' || *i == '/' ) ? '_' : *i;
         strcpy( p, ".txt" );
 
-        linkat( s->logdir_fd, filename, s->faildir_fd, filename, 0 );
+        linkat( q->logdir_fd, filename, q->faildir_fd, filename, 0 );
 
         reader_t log;
 
-        if ( !reader_init( &log, s->outdir_fd, path ) )
-            sys_error( "opening logfile %s", path );
+        if ( !reader_init( &log, q->logdir_fd, filename ) )
+            sys_error( "opening logfile %s", filename );
 
         while ( read_line( &log ) )
             fprintf( stderr, " │ %.*s\n", span_len( log.span ), log.span.str );
@@ -138,10 +142,10 @@ bool queue_start_next( queue_t *q )
     q->job_next = j->next;
 
     cb_clear( &j->node->deps_dyn );
-    job_fork( j, s->outdir_fd );
+    job_fork( j, q->outdir_fd, q->logdir_fd );
 
-    s->running_count ++;
-    s->queued_count --;
+    q->running_count ++;
+    q->queued_count --;
 
     assert( j->pipe_fd < MAX_FD );
     q->running[ j->pipe_fd ] = j;
@@ -375,55 +379,6 @@ void queue_init( queue_t *q, cb_tree *nodes, const char *srcdir )
 
 void queue_monitor( queue_t *q, bool endmsg )
 {
-    mkdir( s->outdir, 0777 ); /* ignore errors */
-    s->outdir_fd = open( s->outdir, O_DIRECTORY | O_CLOEXEC );
-
-    if ( s->outdir_fd < 0 )
-        sys_error( "opening the output directory '%s'", s->outdir );
-
-    if ( flock( s->outdir_fd, LOCK_EX | LOCK_NB ) == -1 )
-        sys_error( "locking the output directory '%s'", s->outdir );
-
-    int debug_fd = openat( s->outdir_fd, "debug", O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0666 );
-
-    if ( debug_fd < 0 )
-        sys_error( "opening %s/debug for writing", s->outdir );
-    else
-        s->debug = fdopen( debug_fd, "w" );
-}
-
-void state_load( state_t *s )
-{
-    var_t *jobs, *outdir;
-
-    load_rules( &s->nodes, &s->env, "gib.file" );
-
-    if ( ( outdir = env_get( &s->env, span_lit( "outdir" ) ) ) && outdir->list )
-        s->outdir = outdir->list->data;
-
-    state_setup_outputs( s );
-
-    if ( ( jobs = env_get( &s->env, span_lit( "jobs" ) ) ) && jobs->list )
-        s->running_max = atoi( jobs->list->data );
-
-    load_dynamic( &s->nodes, s->outdir_fd, "gib.dynamic" );
-    load_stamps( &s->nodes, s->outdir_fd, "gib.stamps" );
-}
-
-void state_save( state_t *s )
-{
-    write_stamps( &s->nodes, s->outdir_fd, "gib.stamps" );
-    save_dynamic( &s->nodes, s->outdir_fd, "gib.dynamic" );
-}
-
-void state_destroy( state_t *s )
-{
-    /* … */
-}
-
-void monitor( state_t *s )
-{
-    time_t started = time( NULL );
     time_t elapsed = 0;
 
     signal( SIGHUP, sighandler );
