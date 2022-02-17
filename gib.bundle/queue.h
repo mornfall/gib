@@ -1,3 +1,4 @@
+#pragma once
 #include "outdb.h"
 #include "rules.h"
 #include "graph.h"

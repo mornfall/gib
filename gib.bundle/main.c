@@ -74,7 +74,7 @@ void state_load( state_t *s )
         sys_error( "opening source directory" );
 
     queue_init( &s->queue, &s->nodes, s->srcdir );
-    load_rules( &s->nodes, &s->env, srcdir_fd, -1,
+    load_rules( &s->nodes, &s->env, &s->queue, srcdir_fd, -1,
                 graph_find_file( &s->nodes, span_lit( "gib.file" ) ) );
 
     if ( ( outdir_var = env_get( &s->env, span_lit( "outdir" ) ) ) && outdir_var->list )
@@ -82,7 +82,8 @@ void state_load( state_t *s )
     if ( ( jobs_var = env_get( &s->env, span_lit( "jobs" ) ) ) && jobs_var->list )
         s->queue.running_max = atoi( jobs_var->list->data );
 
-    queue_set_outdir( &s->queue, outdir );
+    if ( s->queue.outdir_fd < 0 )
+        queue_set_outdir( &s->queue, outdir );
 
     int debug_fd = openat( s->queue.outdir_fd, "debug", O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0666 );
 

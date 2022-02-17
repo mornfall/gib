@@ -2,6 +2,7 @@
 #include "common.h"
 #include "env.h"
 #include "graph.h"
+#include "queue.h"
 #include "manifest.h"
 #include "reader.h"
 
@@ -25,9 +26,10 @@ struct rl_state /* rule loader */
     struct rl_stack *stack;
 
     int srcdir_fd, outdir_fd;
+    queue_t *queue;
 };
 
-void load_rules( cb_tree *nodes, cb_tree *env, int srcdir_fd, int outdir_fd, node_t *node );
+void load_rules( cb_tree *nodes, cb_tree *env, queue_t *q, int srcdir_fd, int outdir_fd, node_t *node );
 
 void rl_error( struct rl_state *s, const char *reason, ... )
 {
@@ -265,7 +267,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
 
         for ( value_t *val = files->list; val; val = val->next )
             if ( !ignore_missing || access( val->data, R_OK ) != -1 )
-                load_rules( s->nodes, s->globals, s->srcdir_fd, s->outdir_fd,
+                load_rules( s->nodes, s->globals, s->queue, s->srcdir_fd, s->outdir_fd,
                             graph_find_file( s->nodes, span_lit( val->data ) ) );
     }
 
@@ -377,7 +379,7 @@ void rl_statement( struct rl_state *s )
     span_free( args );
 }
 
-void load_rules( cb_tree *nodes, cb_tree *env, int srcdir_fd, int outdir_fd, node_t *node )
+void load_rules( cb_tree *nodes, cb_tree *env, queue_t *q, int srcdir_fd, int outdir_fd, node_t *node )
 {
     struct rl_state s;
 
@@ -387,6 +389,7 @@ void load_rules( cb_tree *nodes, cb_tree *env, int srcdir_fd, int outdir_fd, nod
     cb_init( &s.positions );
     s.node = node;
     s.nodes = nodes;
+    s.queue = q;
     s.stack = 0;
     s.srcdir = env_get( env, span_lit( "srcdir" ) )->list->data;
     s.srcdir_fd = srcdir_fd;
