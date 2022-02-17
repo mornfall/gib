@@ -34,6 +34,9 @@ void var_clear( var_t *var )
     /* TODO */
     cb_clear( &var->set );
     var->list = 0;
+
+    if ( var->frozen )
+        error( "cannot reset frozen variable %s", var->name );
 }
 
 var_t *var_alloc( span_t name )
