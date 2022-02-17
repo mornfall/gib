@@ -112,8 +112,10 @@ void graph_dump( FILE *out, cb_tree *t )
     {
         node_t *n = cb_get( &i );
         fprintf( out, "node: %s\n", n->name );
-        fprintf( out, "updated: %08llx\n", n->stamp_updated );
-        fprintf( out, "changed: %08llx\n", n->stamp_changed );
+        fprintf( out, "stamps: %08llx updated | %08llx changed\n", n->stamp_updated, n->stamp_changed );
+
+        if ( n->dirty )
+            fprintf( out, "dirty\n" );
 
         for ( cb_iterator j = cb_begin( &n->deps ); !cb_end( &j ); cb_next( &j ) )
         {
