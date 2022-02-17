@@ -35,7 +35,6 @@ typedef struct
     char *srcdir,
          *outdir;
 
-    int outdir_fd;
     FILE *debug;
 
     cb_tree env;
@@ -69,25 +68,14 @@ void state_init( state_t *s )
     s->outdir = "build";
 }
 
-void state_setup_outputs( state_t *s )
+void state_setup_debug( state_t *s )
 {
-    mkdir( s->outdir, 0777 ); /* ignore errors */
-    s->outdir_fd = open( s->outdir, O_DIRECTORY | O_CLOEXEC );
-
-    if ( s->outdir_fd < 0 )
-        sys_error( "opening the output directory '%s'", s->outdir );
-
-    if ( flock( s->outdir_fd, LOCK_EX | LOCK_NB ) == -1 )
-        sys_error( "locking the output directory '%s'", s->outdir );
-
-    int debug_fd = openat( s->outdir_fd, "debug", O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0666 );
+    int debug_fd = openat( s->queue.outdir_fd, "debug", O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0666 );
 
     if ( debug_fd < 0 )
         sys_error( "opening %s/debug for writing", s->outdir );
     else
         s->debug = fdopen( debug_fd, "w" );
-
-    queue_init( &s->queue, s->outdir_fd, s->srcdir );
 }
 
 void state_load( state_t *s )
@@ -99,19 +87,18 @@ void state_load( state_t *s )
     if ( ( outdir = env_get( &s->env, span_lit( "outdir" ) ) ) && outdir->list )
         s->outdir = outdir->list->data;
 
-    state_setup_outputs( s );
+    queue_init( &s->queue, &s->nodes, s->srcdir );
+    queue_set_outdir( &s->queue, s->outdir );
+    state_setup_debug( s );
 
     if ( ( jobs = env_get( &s->env, span_lit( "jobs" ) ) ) && jobs->list )
         s->queue.running_max = atoi( jobs->list->data );
-
-    load_dynamic( &s->nodes, s->outdir_fd, "gib.dynamic" );
-    load_stamps( &s->nodes, s->outdir_fd, "gib.stamps" );
 }
 
 void state_save( state_t *s )
 {
-    write_stamps( &s->nodes, s->outdir_fd, "gib.stamps" );
-    save_dynamic( &s->nodes, s->outdir_fd, "gib.dynamic" );
+    write_stamps( &s->nodes, s->queue.outdir_fd, "gib.stamps" );
+    save_dynamic( &s->nodes, s->queue.outdir_fd, "gib.dynamic" );
 }
 
 void state_destroy( state_t *s )

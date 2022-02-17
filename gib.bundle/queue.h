@@ -40,6 +40,24 @@ typedef struct
     int running_max;
 } queue_t;
 
+void queue_set_outdir( queue_t *q, const char *dir )
+{
+    if ( q->outdir_fd >= 0 )
+        error( "setting output to '%s': output directory already set", dir );
+
+    mkdir( dir, 0777 ); /* ignore errors */
+    q->outdir_fd = open( dir, O_DIRECTORY | O_CLOEXEC );
+
+    if ( q->outdir_fd < 0 )
+        sys_error( "opening the output directory '%s'", dir );
+
+    if ( flock( q->outdir_fd, LOCK_EX | LOCK_NB ) == -1 )
+        sys_error( "locking the output directory '%s'", dir );
+
+    load_dynamic( q->nodes, q->outdir_fd, "gib.dynamic" );
+    load_stamps( q->nodes, q->outdir_fd, "gib.stamps" );
+}
+
 void queue_show_result( queue_t *q, node_t *n, job_t *j )
 {
     const char *status = "??";
@@ -314,14 +332,15 @@ void queue_add_goal( queue_t *q, const char *name )
         error( "goal %s not defined", name );
 }
 
-void queue_init( queue_t *q, int outdir_fd, const char *srcdir )
+void queue_init( queue_t *q, cb_tree *nodes, const char *srcdir )
 {
-    q->outdir_fd = outdir_fd;
+    q->outdir_fd = -1;
     q->srcdir = srcdir;
-    q->started = time( NULL );
+    q->nodes = nodes;
 
     cb_init( &q->jobs );
 
+    q->started = time( NULL );
     q->failed_count = 0;
     q->skipped_count = 0;
     q->ok_count = 0;
