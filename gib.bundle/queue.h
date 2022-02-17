@@ -25,6 +25,7 @@ typedef struct
         logdir_fd,
         faildir_fd;
     time_t started;
+    time_t stamp_rules;
 
     cb_tree *nodes;
     cb_tree jobs;
@@ -315,7 +316,12 @@ void queue_create_jobs( queue_t *q, node_t *goal )
         return;
 
     if ( var_hash( out->cmd ) != out->cmd_hash )
+    {
         out->dirty = true;
+
+        if ( q->stamp_rules > out->stamp_want )
+            out->stamp_want = q->stamp_rules;
+    }
 
     if ( out->stamp_want > out->stamp_updated || out->dirty )
     {

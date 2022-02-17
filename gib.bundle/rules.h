@@ -19,7 +19,6 @@ struct rl_state /* rule loader */
     cb_tree locals, *globals, templates;
     cb_tree positions;
     cb_tree *nodes;
-    node_t *node;
     const char *srcdir;
     bool out_set, cmd_set, meta_set;
     bool stanza_started;
@@ -404,12 +403,14 @@ void load_rules( cb_tree *nodes, cb_tree *env, queue_t *q, int srcdir_fd, node_t
     cb_init( &s.locals );
     cb_init( &s.templates );
     cb_init( &s.positions );
-    s.node = node;
     s.nodes = nodes;
     s.queue = q;
     s.stack = 0;
     s.srcdir = env_get( env, span_lit( "srcdir" ) )->list->data;
     s.srcdir_fd = srcdir_fd;
+
+    if ( node->stamp_changed > q->stamp_rules )
+        q->stamp_rules = node->stamp_changed;
 
     if ( !reader_init( &s.reader, rl_dirfd( &s, node ), node->name ) )
         sys_error( "opening %s %s", node->type == out_node ? "output" : "source", node->name );
