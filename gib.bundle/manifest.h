@@ -2,11 +2,12 @@
 #include "reader.h"
 #include <sys/stat.h>
 
-void load_manifest( cb_tree *nodes, var_t *src, var_t *dirs, int rootfd, const char *file )
+void load_manifest( cb_tree *nodes, var_t *src, var_t *dirs,
+                    int rootfd, int filedirfd, const char *file )
 {
     reader_t r;
 
-    if ( !reader_init( &r, rootfd, file ) )
+    if ( !reader_init( &r, filedirfd, file ) )
         sys_error( "opening %s", file );
 
     int dirfd = dup( rootfd );
@@ -36,6 +37,7 @@ void load_manifest( cb_tree *nodes, var_t *src, var_t *dirs, int rootfd, const c
         {
             int slash = span_len( dir ) ? 1 : 0;
             int len = span_len( dir ) + span_len( path ) + slash;
+
             node_t *node = calloc( 1, VSIZE( node, name ) + len + 1 );
             span_copy( node->name, dir );
             node->frozen = true;

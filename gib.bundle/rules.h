@@ -183,7 +183,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
         {
             node_t *n = graph_find_file( s->nodes, span_lit( val->data ) );
             rl_get_file( s, n );
-            load_manifest( s->nodes, src, dir, rl_dirfd( s, n ), val->data );
+            load_manifest( s->nodes, src, dir, s->srcdir_fd, rl_dirfd( s, n ), val->data );
         }
     }
 
