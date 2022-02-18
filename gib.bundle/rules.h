@@ -255,8 +255,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
                 env_expand( var, &s->locals, s->globals, word, 0 );
             }
         else
-            if ( !span_empty( args ) )
-                env_expand( var, &s->locals, s->globals, args, 0 );
+            env_expand( var, &s->locals, s->globals, args, 0 );
     }
 
     else if ( span_eq( cmd, "use" ) )
