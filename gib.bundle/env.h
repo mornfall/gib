@@ -155,6 +155,7 @@ var_t *env_resolve( cb_tree *local, cb_tree *global, span_t spec, bool *autovivi
 {
     span_t sub = spec;
     span_t base = fetch_until( &sub, '.', 0 );
+    bool make = *autovivify;
 
     if ( !span_empty( base ) && sub.str[ 0 ] == '$' )
     {
@@ -170,11 +171,20 @@ var_t *env_resolve( cb_tree *local, cb_tree *global, span_t spec, bool *autovivi
         cb_tree *use_env = env_get( local, base ) ? local : global;
 
         var_t *var = env_get( use_env, ref );
-        bool make = *autovivify;
         *autovivify = true;
 
         return var ?: make ? env_set( use_env, ref ) : NULL;
     }
+
+    cb_tree *envs[ 3 ] = { local, global, NULL };
+
+    for ( cb_tree **env = envs; *env; ++env )
+        if ( !span_empty( base ) && env_get( *env, base ) )
+        {
+            *autovivify = true;
+            var_t *var = env_get( *env, spec );
+            return var ?: make ? env_set( *env, spec ) : NULL;
+        }
 
     *autovivify = false;
     return env_get( local, spec ) ?: env_get( global, spec );
