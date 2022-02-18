@@ -45,15 +45,23 @@ void load_manifest( cb_tree *nodes, var_t *src, var_t *dirs, int rootfd, const c
 
             char *file = node->name + span_len( dir ) + slash;
             span_copy( file, path );
-            var_add( src, span_mk( node->name, node->name + len ) );
-
-            if ( !graph_put( nodes, node, len ) )
-                error( "%s:%d: duplicate node '%s'", r.pos.file, r.pos.line, node->name );
+            span_t name = span_mk( node->name, node->name + len );
+            var_add( src, name );
 
             struct stat st;
 
             if ( fstatat( dirfd, file, &st, 0 ) == -1 )
                 sys_error( "%s:%d: stat failed for %s", r.pos.file, r.pos.line, node->name );
+
+            if ( !graph_put( nodes, node, len ) )
+            {
+                node_t *prev = graph_get( nodes, name );
+                if ( prev->frozen )
+                    error( "%s:%d: duplicate node '%s'", r.pos.file, r.pos.line, node->name );
+                prev->frozen = true;
+                free( node );
+                node = prev;
+            }
 
             graph_use_stat( node, &st );
             node->type = src_node;
