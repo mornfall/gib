@@ -65,10 +65,10 @@ void rl_push( struct rl_state *s, const char *what )
 
 void rl_set_position( struct rl_state *s, span_t what )
 {
-    fileline_t *pos = malloc( VSIZE( pos, name ) + span_len( what ) + 1 );
+    fileline_t *pos = malloc( offsetof( fileline_t, name ) + span_len( what ) + 1 );
     *pos = s->reader.pos;
     span_copy( pos->name, what );
-    cb_insert( &s->positions, pos, VSIZE( pos, name ), span_len( what ) );
+    cb_insert( &s->positions, pos, offsetof( fileline_t, name ), span_len( what ) );
 }
 
 void rl_get_file( struct rl_state *s, node_t *n )
@@ -129,7 +129,7 @@ void rl_stanza_end( struct rl_state *s )
         {
             node_t *dep_n = graph_get( s->nodes, span_lit( dep->data ) );
             assert( dep_n );
-            cb_insert( &node->deps, dep_n, VSIZE( dep_n, name ), strlen( dep->data ) );
+            cb_insert( &node->deps, dep_n, offsetof( node_t, name ), strlen( dep->data ) );
         }
     }
 

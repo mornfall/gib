@@ -111,11 +111,11 @@ job_t *job_add( cb_tree *jobs, node_t *build )
 
     if ( !j )
     {
-        j = calloc( 1, VSIZE( j, name ) + span_len( name ) + 1 );
+        j = calloc( 1, offsetof( job_t, name ) + span_len( name ) + 1 );
         span_copy( j->name, name );
         j->node = build;
         j->changed = true;
-        cb_insert( jobs, j, VSIZE( j, name ), -1 );
+        cb_insert( jobs, j, offsetof( job_t, name ), -1 );
     }
 
     return j;

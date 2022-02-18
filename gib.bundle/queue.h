@@ -333,7 +333,7 @@ void queue_create_jobs( queue_t *q, node_t *goal )
             if ( dep_out && !dep_out->failed )
                 if ( dep_out->stamp_want > dep_out->stamp_updated || dep_out->dirty )
                 {
-                    cb_insert( &dep->blocking, goal, VSIZE( goal, name ), -1 );
+                    cb_insert( &dep->blocking, goal, offsetof( node_t, name ), -1 );
                     goal->waiting ++;
                 }
 

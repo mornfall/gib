@@ -161,7 +161,7 @@ void selector_fill( state_t *s, selector_t *sel )
             sel->clear_matched = true;
             node_t *node = cb_get( &i );
             if ( strstr( node->name, sel->string.str ) ) /* sel->string is 0-terminated */
-                cb_insert( &sel->matched, node, VSIZE( node, name ), -1 );
+                cb_insert( &sel->matched, node, offsetof( node_t, name ), -1 );
         }
     else
     {
@@ -195,7 +195,7 @@ void update_goals( state_t *s, selector_t *sel )
         for ( cb_iterator i = cb_begin( &sel->matched ); !cb_end( &i ); cb_next( &i ) )
         {
             node_t *node = cb_get( &i );
-            cb_insert( &s->goals, node, VSIZE( node, name ), -1 );
+            cb_insert( &s->goals, node, offsetof( node_t, name ), -1 );
         }
     }
     else
@@ -208,7 +208,7 @@ void update_goals( state_t *s, selector_t *sel )
             if ( sel->op == match_op_intersect &&  found ||
                  sel->op == match_op_subtract  && !found )
             {
-                cb_insert( &target, node, VSIZE( node, name ), -1 );
+                cb_insert( &target, node, offsetof( node_t, name ), -1 );
             }
         }
 

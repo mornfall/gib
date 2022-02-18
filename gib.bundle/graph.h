@@ -70,7 +70,7 @@ node_t *graph_put( cb_tree *t, node_t *node, int len )
     cb_init( &node->deps_dyn );
     cb_init( &node->blocking );
 
-    if ( cb_insert( t, node, VSIZE( node, name ), len ) )
+    if ( cb_insert( t, node, offsetof( node_t, name ), len ) )
         return node;
     else
         return 0;
@@ -82,7 +82,7 @@ node_t *graph_add( cb_tree *t, span_t name )
 
     if ( !node )
     {
-        node = calloc( 1, VSIZE( node, name ) + span_len( name ) + 1 );
+        node = calloc( 1, offsetof( node_t, name ) + span_len( name ) + 1 );
         span_copy( node->name, name );
         graph_put( t, node, span_len( name ) );
     }
@@ -119,9 +119,9 @@ void graph_add_dep( cb_tree *t, node_t *n, span_t name, bool dyn )
         error( "dependency %.*s not defined", span_len( name ), name );
 
     if ( dyn )
-        cb_insert( &n->deps_dyn, dep, VSIZE( dep, name ), span_len( name ) );
+        cb_insert( &n->deps_dyn, dep, offsetof( node_t, name ), span_len( name ) );
 
-    cb_insert( &n->deps, dep, VSIZE( dep, name ), span_len( name ) );
+    cb_insert( &n->deps, dep, offsetof( node_t, name ), span_len( name ) );
 }
 
 void graph_dump( FILE *out, cb_tree *t )

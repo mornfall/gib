@@ -3,7 +3,6 @@
 #include "span.h"
 #include "critbit.h"
 #include "sha1.h"
-#define VSIZE( x, m ) ( ( int ) ( ( ( void * ) x->m ) - ( ( void * ) x ) ) )
 
 typedef struct value
 {
@@ -41,7 +40,7 @@ void var_clear( var_t *var )
 
 var_t *var_alloc( span_t name )
 {
-    var_t *var = calloc( 1, VSIZE( var, name ) + span_len( name ) + 1 );
+    var_t *var = calloc( 1, offsetof( var_t, name ) + span_len( name ) + 1 );
     span_copy( var->name, name );
     return var;
 }
@@ -66,7 +65,7 @@ var_t *env_set( cb_tree *env, span_t name )
     else
     {
         var = var_alloc( name );
-        cb_insert( env, var, VSIZE( var, name ), span_len( name ) );
+        cb_insert( env, var, offsetof( var_t, name ), span_len( name ) );
     }
 
     return var;
@@ -78,7 +77,7 @@ void var_add_value( var_t *var, value_t *val )
         error( "cannot change frozen variable %s", var->name );
 
     val->next = 0;
-    cb_insert( &var->set, val, VSIZE( val, data ), -1 );
+    cb_insert( &var->set, val, offsetof( value_t, data ), -1 );
 
     if ( var->list )
     {
@@ -91,7 +90,7 @@ void var_add_value( var_t *var, value_t *val )
 
 void var_add( var_t *var, span_t str )
 {
-    value_t *val = malloc( VSIZE( val, data ) + span_len( str ) + 1 );
+    value_t *val = malloc( offsetof( value_t, data ) + span_len( str ) + 1 );
     span_copy( val->data, str );
     var_add_value( var, val );
 }
@@ -126,7 +125,7 @@ void env_dup( cb_tree *out, cb_tree *env )
     for ( cb_iterator i = cb_begin( env ); !cb_end( &i ); cb_next( &i ) )
     {
         var_t *var = cb_get( &i ); /* TODO copy the values */
-        cb_insert( out, var, VSIZE( var, name ), -1 );
+        cb_insert( out, var, offsetof( var_t, name ), -1 );
     }
 }
 
