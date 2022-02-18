@@ -364,6 +364,7 @@ void queue_init( queue_t *q, cb_tree *nodes, const char *srcdir )
     q->outdir_fd = -1;
     q->srcdir = srcdir;
     q->nodes = nodes;
+    q->stamp_rules = 0;
 
     cb_init( &q->jobs );
 
