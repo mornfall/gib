@@ -1,3 +1,7 @@
+#pragma once
+#include "span.h"
+#include "common.h"
+
 typedef struct
 {
     int fd;
