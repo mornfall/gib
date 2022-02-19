@@ -50,7 +50,7 @@ void writer_append( writer_t *w, span_t span )
     }
     else
     {
-        while ( span_len( span ) > BUFFER - w->ptr )
+        while ( span_len( span ) >= BUFFER - w->ptr )
             writer_flush( w );
 
         span_copy( w->buffer + w->ptr, span );
