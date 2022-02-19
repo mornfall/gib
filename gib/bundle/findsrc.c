@@ -1,4 +1,5 @@
 #include "common.h"
+#include "writer.h"
 #include <sys/stat.h>
 #include <dirent.h>
 
@@ -8,7 +9,7 @@ struct todo
     struct dirent dt;
 };
 
-void dump( int dirfd, const char *path, bool is_root )
+void dump( int dirfd, writer_t *w, const char *path, bool is_root )
 {
     DIR *list = fdopendir( dirfd );
     struct dirent *dirp;
@@ -46,10 +47,14 @@ void dump( int dirfd, const char *path, bool is_root )
         }
 
         if ( dirp->d_type == DT_REG )
-            printf( "f %s\n", dirp->d_name );
+        {
+            writer_append( w, span_lit( "f " ) );
+            writer_append( w, span_lit( dirp->d_name ) );
+            writer_append( w, span_lit( "\n" ) );
+        }
     }
 
-    printf( "\n" );
+    writer_append( w, span_lit( "\n" ) );
 
     while ( todo )
     {
@@ -59,12 +64,14 @@ void dump( int dirfd, const char *path, bool is_root )
             *spp++ = '/';
         spp = stpcpy( spp, todo->dt.d_name );
 
-        printf( "d %s\n", subpath );
+        writer_append( w, span_lit( "d " ) );
+        writer_append( w, span_mk( subpath, spp ) );
+        writer_append( w, span_lit( "\n" ) );
 
         int subfd = openat( dirfd, todo->dt.d_name, O_DIRECTORY | O_RDONLY );
         if ( subfd < 0 )
             sys_error( "opening directory %s", todo->dt.d_name );
-        dump( subfd, subpath, false );
+        dump( subfd, w, subpath, false );
 
         struct todo *n = todo->next;
         free( todo );
@@ -76,9 +83,16 @@ void dump( int dirfd, const char *path, bool is_root )
 
 int main( int argc, const char *argv[] )
 {
-    int rootfd = open( ".", O_DIRECTORY | O_RDONLY );
-    if ( rootfd < 0 )
-        sys_error( "opening directory ." );
+    if ( argc < 2 )
+        return 1;
 
-    dump( rootfd, "", true );
+    writer_t out;
+    int rootfd = open( argv[ 1 ], O_DIRECTORY | O_RDONLY );
+
+    if ( rootfd < 0 )
+        sys_error( "opening directory %s", argv[ 1 ] );
+
+    writer_open( &out, AT_FDCWD, argv[ 2 ] );
+    dump( rootfd, &out, "", true );
+    writer_close( &out );
 }
