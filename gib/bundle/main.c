@@ -84,7 +84,8 @@ void state_load( state_t *s )
     if ( ( jobs_var = env_get( &s->env, span_lit( "jobs" ) ) ) && jobs_var->list )
         s->queue.running_max = atoi( jobs_var->list->data );
 
-    int debug_fd = openat( s->queue.outdir_fd, "debug", O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0666 );
+    int debug_fd = openat( s->queue.outdir_fd, "gib.debug",
+                           O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0666 );
 
     if ( debug_fd < 0 )
         sys_error( "opening gib.debug for writing" );
