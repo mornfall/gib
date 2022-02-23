@@ -88,8 +88,8 @@ void dump( int dirfd, writer_t *w, writer_t *dep, const char *path, bool is_root
 
 int main( int argc, const char *argv[] )
 {
-    if ( argc < 2 )
-        return 1;
+    if ( argc != 3 )
+        error( "usage: %s <rootdir> <outfile>", argv[ 0 ] );
 
     writer_t out, dep;
     int rootfd = open( argv[ 1 ], O_DIRECTORY | O_RDONLY );
