@@ -20,11 +20,12 @@ void dump( int dirfd, writer_t *w, writer_t *dep, const char *path, bool is_root
 
     while ( ( dirp = readdir( list ) ) )
     {
-        if ( dirp->d_name[ 0 ] == '.' || dirp->d_name[ 0 ] == '_' )
+        if ( dirp->d_name[ 0 ] == '.' )
             continue;
 
         if ( is_root && ( !strncmp( dirp->d_name, "bin.", 4 ) ||
-                          !strncmp( dirp->d_name, "gib.", 4 ) ) )
+                          !strncmp( dirp->d_name, "gib.", 4 ) ||
+                          dirp->d_name[ 0 ] == '_' ) )
             continue;
 
         if ( dirp->d_type == DT_UNKNOWN )
