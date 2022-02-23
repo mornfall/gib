@@ -1,1 +1,1 @@
-include gib.bundle/boot.mk
+include gib/bundle/boot.mk
