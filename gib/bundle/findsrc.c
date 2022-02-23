@@ -12,7 +12,7 @@ struct todo
 typedef struct state
 {
     bool is_root;
-    const char *path;
+    span_t path;
     int dirfd;
     writer_t *out, *dep;
 } state_t;
@@ -23,8 +23,12 @@ void dump( state_t s )
     struct dirent *dirp;
     struct todo *todo = 0;
 
+    writer_append( s.dep, span_lit( "dep " ) );
+    writer_append( s.dep, span_empty( s.path ) ? span_lit( "." ) : s.path );
+    writer_append( s.dep, span_lit( "\n" ) );
+
     if ( !list )
-        sys_error( "fdopendir on %s failed", s.path );
+        sys_error( "fdopendir on %.*s failed", span_len( s.path ), s.path.str );
 
     while ( ( dirp = readdir( list ) ) )
     {
@@ -71,9 +75,9 @@ void dump( state_t s )
 
     while ( todo )
     {
-        char subpath[ strlen( s.path ) + strlen( todo->dt.d_name ) + 2 ], *spp = subpath;
-        spp = stpcpy( spp, s.path );
-        if ( strlen( s.path ) )
+        char subpath[ span_len( s.path ) + strlen( todo->dt.d_name ) + 2 ], *spp = subpath;
+        spp = span_copy( spp, s.path );
+        if ( span_len( s.path ) )
             *spp++ = '/';
         spp = stpcpy( spp, todo->dt.d_name );
 
@@ -81,11 +85,7 @@ void dump( state_t s )
         writer_append( s.out, span_mk( subpath, spp ) );
         writer_append( s.out, span_lit( "\n" ) );
 
-        writer_append( s.dep, span_lit( "dep " ) );
-        writer_append( s.dep, span_mk( subpath, spp ) );
-        writer_append( s.dep, span_lit( "\n" ) );
-
-        sub.path   = subpath;
+        sub.path   = span_mk( subpath, spp );
         sub.dirfd  = openat( s.dirfd, todo->dt.d_name, O_DIRECTORY | O_RDONLY );
 
         if ( sub.dirfd < 0 )
@@ -114,7 +114,7 @@ int main( int argc, const char *argv[] )
         .out     = &out,
         .dep     = &dep,
         .is_root = true,
-        .path    = ""
+        .path    = span_lit( "" )
     };
 
     if ( s.dirfd < 0 )
