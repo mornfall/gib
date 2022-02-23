@@ -67,15 +67,18 @@ void state_init( state_t *s )
 void state_load( state_t *s )
 {
     var_t *jobs_var, *outdir_var;
-    const char *outdir = "build";
+    const char *main = "gib/main";
 
     int srcdir_fd = open( ".", O_DIRECTORY | O_CLOEXEC );
     if ( srcdir_fd < 0 )
         sys_error( "opening source directory" );
 
+    if ( faccessat( srcdir_fd, "gibfile", R_OK, 0 ) == 0 )
+        main = "gibfile";
+
     queue_init( &s->queue, &s->nodes, s->srcdir );
     load_rules( &s->nodes, &s->env, &s->queue, srcdir_fd,
-                graph_find_file( &s->nodes, span_lit( "gib.file" ) ) );
+                graph_find_file( &s->nodes, span_lit( main ) ) );
     queue_set_outdir( &s->queue, &s->env );
 
     if ( ( jobs_var = env_get( &s->env, span_lit( "jobs" ) ) ) && jobs_var->list )
@@ -84,7 +87,7 @@ void state_load( state_t *s )
     int debug_fd = openat( s->queue.outdir_fd, "debug", O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0666 );
 
     if ( debug_fd < 0 )
-        sys_error( "opening %s/debug for writing", outdir );
+        sys_error( "opening gib.debug for writing" );
     else
         s->debug = fdopen( debug_fd, "w" );
 }
