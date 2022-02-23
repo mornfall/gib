@@ -3,19 +3,20 @@ set cflags -g
 set ldflags
 set all
 
-sub gib.bundle/boot.gib
+sub gib/bundle/boot.gib
 
 out make directories
-dep gib.bundle/manifest.txt
-cmd /bin/mkdir -p gib.bundle
+dep gib/bundle/manifest.txt
+cmd /bin/mkdir -p gib/bundle bin
 
 for src $(gibsrc:*.c)
 out $(src!stem).o
 dep make directories
 cmd gib.wrapcc $(cc) -c $(cflags) -o $(out) $(srcdir)/$(src)
 
-out gib
+out bin/gib
 add all $(out)
-let obj gib.bundle/main.o gib.bundle/sha1.o
+let obj gib/bundle/main.o gib/bundle/sha1.o
 dep $(obj)
+dep $(gibdir)
 cmd $(cc) $(cflags) -o $(out) $(obj)
