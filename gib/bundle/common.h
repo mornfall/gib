@@ -14,6 +14,8 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
+#define BUFFER 8192
+
 /* TODO error handling? */
 
 void sys_error( const char *reason, ... )
