@@ -1,15 +1,16 @@
-src  gibsrc gibdir gib.bundle/manifest.txt
+src  gibsrc gibdir gib/bundle/manifest.txt
 
 def gibutil
 out gib.$(name)
-dep gib.bundle/$(name).c
-cmd $(cc) $(cflags) -o $(out) $(srcdir)/gib.bundle/$(name).c
+let src gib/bundle/$(name).c
+dep $(src)
+cmd $(cc) $(cflags) -o $(out) $(srcdir)/$(src)
 
 let name wrapcc
 use gibutil
-dep gib.bundle/reader.h
-dep gib.bundle/writer.h
-dep gib.bundle/common.h
+dep gib/bundle/reader.h
+dep gib/bundle/writer.h
+dep gib/bundle/common.h
 
 let name nochange
 use gibutil

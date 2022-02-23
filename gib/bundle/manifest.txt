@@ -1,4 +1,4 @@
-d gib.bundle
+d gib/bundle
 f main.c
 f sha1.c
 f wrapcc.c
