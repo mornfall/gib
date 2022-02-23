@@ -4,10 +4,12 @@
 #include "graph.h"
 #include "job.h"
 #include <sys/wait.h>
+#include <sys/types.h>
 #include <sys/utsname.h>
 #include <signal.h>
 #include <ctype.h>
 #include <time.h>
+#include <dirent.h>
 #define MAX_FD 64
 
 static volatile sig_atomic_t _signalled = 0;
@@ -78,6 +80,13 @@ void queue_set_outdir( queue_t *q, cb_tree *env )
 
     load_dynamic( q->nodes, q->outdir_fd, "gib.dynamic" );
     load_stamps( q->nodes, q->outdir_fd, "gib.stamps" );
+
+    DIR *fdir = fdopendir( q->faildir_fd );
+    struct dirent *fent;
+
+    while ( fdir && ( fent = readdir( fdir ) ) )
+        unlinkat( q->faildir_fd, fent->d_name, 0 );
+    closedir( fdir );
 }
 
 void queue_show_result( queue_t *q, node_t *n, job_t *j )
