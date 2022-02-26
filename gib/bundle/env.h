@@ -95,6 +95,17 @@ void var_add( var_t *var, span_t str )
     var_add_value( var, val );
 }
 
+void var_reset( var_t *var, span_t str )
+{
+    var_clear( var );
+    var_add( var, str );
+}
+
+void env_reset( cb_tree *env, span_t name, span_t str )
+{
+    var_add( env_set( env, name ), str );
+}
+
 uint64_t var_hash( value_t *head )
 {
     sha1_ctx ctx;

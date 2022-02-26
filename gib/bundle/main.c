@@ -58,10 +58,9 @@ void state_init( state_t *s )
         if ( isupper( *s ) )
             *s += 32;
 
-    var_t *srcdir = env_set( &s->env, span_lit( "srcdir" ) );
-    var_add( srcdir, span_lit( s->srcdir ) );
-    var_t *uname = env_set( &s->env, span_lit( "uname" ) );
-    var_add( uname, span_lit( uts.sysname ) );
+    env_reset( &s->env, span_lit( "srcdir" ), span_lit( s->srcdir ) );
+    env_reset( &s->env, span_lit( "uname" ), span_lit( uts.sysname ) );
+    env_reset( &s->env, span_lit( "config" ), span_lit( "default" ) );
 }
 
 void state_load( state_t *s )
@@ -141,13 +140,31 @@ bool process_goal( state_t *s, const char *arg )
 
 void usage() {}
 
+bool process_option( state_t *s, int ch, const char *arg )
+{
+    var_t *conf;
+
+    switch ( ch )
+    {
+        case 'c':
+            env_reset( &s->env, span_lit( "config" ), span_lit( arg ) );
+            return true;
+        default:
+            return false;
+    }
+}
+
 void parse_options( state_t *s, int argc, char *argv[] )
 {
     int ch;
 
+    while ( ( ch = getopt( argc, argv, "c:" ) ) != -1 )
+        if ( !process_option( s, ch, optarg ) )
+            usage(), error( "unknown option -%c", ch );
+
     s->select_head = s->select_tail = calloc( 1, sizeof( selector_t ) );
 
-    for ( int i = 1; i < argc; ++i )
+    for ( int i = optind; i < argc; ++i )
         process_goal( s, argv[ i ] );
 
     if ( s->select_head == s->select_tail )
