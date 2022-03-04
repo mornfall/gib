@@ -37,7 +37,7 @@ void process_depfile( const char *path )
     bool found = false;
 
     if ( !reader_init( &reader, AT_FDCWD, path ) )
-        sys_error( "open %s\n", path );
+        sys_error( "open %s", path );
 
     writer.file = writer.tmp = NULL;
     writer.ptr = 0;
