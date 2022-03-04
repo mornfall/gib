@@ -16,6 +16,6 @@ all $(.TARGETS) $(MAKECMDGOALS): .gib.bin
 	@./.gib.bin $@
 
 .gib.bin: $(SRC) $(HDR)
-	@cc -g -o .gib.bin $(SRC)
+	@cc -O2 -g -o .gib.bin $(SRC)
 
 .PHONY: $(.TARGETS) $(MAKECMDGOALS) all
