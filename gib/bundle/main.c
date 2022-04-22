@@ -40,11 +40,13 @@ typedef struct
 
     selector_t *select_head, *select_tail;
     cb_tree goals;
+    char *show_var;
 } state_t;
 
 void state_init( state_t *s )
 {
     s->srcdir = getcwd( 0, 0 );
+    s->show_var = NULL;
 
     cb_init( &s->env );
     cb_init( &s->nodes );
@@ -149,6 +151,9 @@ bool process_option( state_t *s, int ch, const char *arg )
         case 'c':
             env_reset( &s->env, span_lit( "config" ), span_lit( arg ) );
             return true;
+        case 'V':
+            s->show_var = arg;
+            return true;
         default:
             return false;
     }
@@ -158,7 +163,7 @@ void parse_options( state_t *s, int argc, char *argv[] )
 {
     int ch;
 
-    while ( ( ch = getopt( argc, argv, "c:" ) ) != -1 )
+    while ( ( ch = getopt( argc, argv, "c:V:" ) ) != -1 )
         if ( !process_option( s, ch, optarg ) )
             usage(), error( "unknown option -%c", ch );
 
@@ -243,6 +248,7 @@ void update_goals( state_t *s, selector_t *sel )
 int main( int argc, char *argv[] )
 {
     state_t s;
+    var_t *show;
 
     state_init( &s );
     parse_options( &s, argc, argv );
@@ -264,9 +270,16 @@ int main( int argc, char *argv[] )
     for ( cb_iterator i = cb_begin( &s.nodes ); !cb_end( &i ); cb_next( &i ) )
         queue_cleanup_node( &s.queue, cb_get( &i ) );
 
-    graph_dump( s.debug, &s.nodes );
-    queue_monitor( &s.queue, true );
-    state_save( &s );
+    if ( s.show_var && ( show = env_get( &s.env, span_lit( s.show_var ) ) ) )
+        for ( value_t *val = show->list; val != NULL; val = val->next )
+            puts( val->data );
 
+    if ( !s.show_var )
+    {
+        graph_dump( s.debug, &s.nodes );
+        queue_monitor( &s.queue, true );
+    }
+
+    state_save( &s );
     return s.queue.failed_count > 0;
 }
