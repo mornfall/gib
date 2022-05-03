@@ -21,6 +21,6 @@ all $(.TARGETS) $(TODO): .gib.bin
 	@./.gib.bin $@
 
 .gib.bin: $(SRC) $(HDR)
-	@cc -O2 -g -o .gib.bin $(SRC)
+	@cc -g -o .gib.bin $(SRC)
 
 .PHONY: $(TODO) all
