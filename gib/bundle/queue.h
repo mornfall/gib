@@ -6,6 +6,8 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/utsname.h>
+#include <sys/file.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <ctype.h>
 #include <time.h>
