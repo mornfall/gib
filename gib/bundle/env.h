@@ -151,6 +151,13 @@ span_t span_stem( span_t s )
     return s;
 }
 
+span_t span_base( span_t s )
+{
+    const char *dirsep = s.end;
+    while ( dirsep > s.str && *--dirsep != '/' );
+    return span_mk( *dirsep == '/' ? dirsep + 1 : dirsep, s.end );
+}
+
 span_t env_expand_singleton( cb_tree *local, cb_tree *global, span_t str )
 {
     var_t *var = env_get( local, str ) ?: env_get( global, str );
@@ -309,6 +316,8 @@ void env_expand( var_t *var, cb_tree *local, cb_tree *global, span_t str, const 
         {
             if ( span_eq( ref_spec, "stem" ) )
                 data = span_stem( data );
+            else if ( span_eq( ref_spec, "base" ) )
+                data = span_base( data );
             else
                 error( "unknown substitution operator %.*s\n", span_len( ref_spec ), ref_spec.str );
         }
