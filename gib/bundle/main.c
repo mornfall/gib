@@ -40,7 +40,7 @@ typedef struct
 
     selector_t *select_head, *select_tail;
     cb_tree goals;
-    char *show_var;
+    const char *show_var;
 } state_t;
 
 void state_init( state_t *s )
