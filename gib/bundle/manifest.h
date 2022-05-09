@@ -71,7 +71,7 @@ void load_manifest( cb_tree *nodes, var_t *src, var_t *dirs,
             node = prev;
         }
 
-        graph_use_stat( node, &st );
+        graph_set_stamps( node, st.st_mtime );
         node->type = src_node;
     }
 

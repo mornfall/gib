@@ -65,6 +65,10 @@ void state_init( state_t *s )
     env_reset( &s->env, span_lit( "config" ), span_lit( "default" ) );
     env_reset( &s->env, span_lit( "hostname" ), span_lit( uts.nodename ) );
     env_reset( &s->env, span_lit( "logname" ), span_lit( getenv( "LOGNAME" ) ) );
+
+    node_t *ct = graph_add( &s->nodes, span_lit( "current time" ) );
+    graph_set_stamps( ct, time( NULL ) );
+    ct->frozen = true;
 }
 
 void state_load( state_t *s )

@@ -49,9 +49,9 @@ node_t *graph_get( cb_tree *t, span_t name )
         return 0;
 }
 
-void graph_use_stat( node_t *n, struct stat *st )
+void graph_set_stamps( node_t *n, int64_t value )
 {
-    n->stamp_want = n->stamp_changed = n->stamp_updated = st->st_mtime;
+    n->stamp_want = n->stamp_changed = n->stamp_updated = value;
 }
 
 bool graph_do_stat( node_t *n )
@@ -61,7 +61,7 @@ bool graph_do_stat( node_t *n )
     if ( stat( n->name, &st ) == -1 )
         return false;
     else
-        return graph_use_stat( n, &st ), true;
+        return graph_set_stamps( n, st.st_mtime ), true;
 }
 
 node_t *graph_put( cb_tree *t, node_t *node, int len )
