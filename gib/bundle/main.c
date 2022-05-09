@@ -63,6 +63,8 @@ void state_init( state_t *s )
     env_reset( &s->env, span_lit( "srcdir" ), span_lit( s->srcdir ) );
     env_reset( &s->env, span_lit( "uname" ), span_lit( uts.sysname ) );
     env_reset( &s->env, span_lit( "config" ), span_lit( "default" ) );
+    env_reset( &s->env, span_lit( "hostname" ), span_lit( uts.nodename ) );
+    env_reset( &s->env, span_lit( "logname" ), span_lit( getenv( "LOGNAME" ) ) );
 }
 
 void state_load( state_t *s )
