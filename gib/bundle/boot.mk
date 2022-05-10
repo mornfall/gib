@@ -12,10 +12,15 @@ HDR = gib/bundle/span.h \
       gib/bundle/rules.h
 SRC = gib/bundle/main.c gib/bundle/sha1.c
 
-all $(.TARGETS) $(MAKECMDGOALS): .gib.bin
+GOALS    = $(.TARGETS) $(MAKECMDGOALS)
+TARGETS += .gib.bin
+MATCHED  = $(TARGETS:M$(GOALS))
+TODO     = $(GOALS:N$(MATCHED))
+
+all $(.TARGETS) $(TODO): .gib.bin
 	@./.gib.bin $@
 
 .gib.bin: $(SRC) $(HDR)
 	@cc -O2 -g -o .gib.bin $(SRC)
 
-.PHONY: $(.TARGETS) $(MAKECMDGOALS) all
+.PHONY: $(TODO) all
