@@ -83,7 +83,7 @@ void queue_set_outdir( queue_t *q, cb_tree *env )
     load_dynamic( q->nodes, q->outdir_fd, "gib.dynamic" );
     load_stamps( q->nodes, q->outdir_fd, "gib.stamps" );
 
-    DIR *fdir = fdopendir( q->faildir_fd );
+    DIR *fdir = fdopendir( dup( q->faildir_fd ) );
     struct dirent *fent;
 
     while ( fdir && ( fent = readdir( fdir ) ) )
