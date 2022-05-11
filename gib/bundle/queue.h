@@ -87,7 +87,8 @@ void queue_set_outdir( queue_t *q, cb_tree *env )
     struct dirent *fent;
 
     while ( fdir && ( fent = readdir( fdir ) ) )
-        unlinkat( q->faildir_fd, fent->d_name, 0 );
+        if ( fent->d_name[ 0 ] != '.' )
+            unlinkat( q->faildir_fd, fent->d_name, 0 );
     closedir( fdir );
 }
 
