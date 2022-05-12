@@ -78,7 +78,12 @@ void queue_set_outdir( queue_t *q, cb_tree *env )
         sys_error( "opening the output directory '%s'", dir );
 
     if ( flock( q->outdir_fd, LOCK_EX | LOCK_NB ) == -1 )
-        sys_error( "locking the output directory '%s'", dir );
+    {
+        fprintf( stderr, "output directory '%s' locked (waiting)\n", dir );
+
+        if ( flock( q->outdir_fd, LOCK_EX ) == -1 )
+            sys_error( "locking the output directory '%s'", dir );
+    }
 
     load_dynamic( q->nodes, q->outdir_fd, "gib.dynamic" );
     load_stamps( q->nodes, q->outdir_fd, "gib.stamps" );
