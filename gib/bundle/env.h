@@ -146,7 +146,10 @@ span_t span_stem( span_t s )
 
     while ( end > s.str && *--end != '/' )
         if ( *end == '.' )
+        {
             s.end = end;
+            break;
+        }
 
     return s;
 }
