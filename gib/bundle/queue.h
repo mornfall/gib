@@ -117,7 +117,8 @@ void queue_show_result( queue_t *q, node_t *n, job_t *j )
             *p = ( *i == ' ' || *i == '/' ) ? '_' : *i;
         strcpy( p, ".txt" );
 
-        linkat( q->logdir_fd, filename, q->faildir_fd, filename, 0 );
+        if ( n->failed )
+            linkat( q->logdir_fd, filename, q->faildir_fd, filename, 0 );
 
         reader_t log;
 
