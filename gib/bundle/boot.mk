@@ -23,7 +23,7 @@ makefile: ;
 
 # building gib is easy-ish
 .gib.bin: $(SRC) $(HDR)
-	@cc -g -o .gib.bin $(SRC)
+	@sh gib/bundle/c99.sh -O2 -g -o .gib.bin $(SRC)
 
 # openbsd make does not like prerequisites on .DEFAULT
 .BEGIN: .gib.bin
