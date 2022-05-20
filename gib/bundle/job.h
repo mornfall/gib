@@ -15,24 +15,6 @@ typedef struct job
     char name[];
 } job_t;
 
-void log_argv( int fd, char **argv )
-{
-    int size = 512, ptr = 0;
-    char *buf = malloc( size );
-
-    for ( int i = 0; argv[ i ]; ++i )
-    {
-        if ( ptr + strlen( argv[ i ] ) + 8 >= size )
-            if ( !( buf = realloc( buf, size += size + strlen( argv[ i ] ) + 8 ) ) )
-                sys_error( "realloc" );
-
-        ptr += sprintf( buf + ptr, "%s%s\n", i ? "      " : "execv ", argv[ i ] );
-    }
-
-    write( fd, buf, ptr );
-    free( buf );
-}
-
 void job_exec( job_t *j, int outdir_fd, int logdir_fd, int childfd )
 {
     int argv_size = 16, i = 0;
@@ -71,7 +53,9 @@ void job_exec( job_t *j, int outdir_fd, int logdir_fd, int childfd )
     dup2( logfd, 2 );
     dup2( childfd, 3 );
 
-    log_argv( 2, argv );
+    for ( int i = 0; argv[ i ]; ++i )
+        fprintf( stderr, "gib# %s%s\n", i ? "    " : "cmd ", argv[ i ] );
+
     execv( argv[ 0 ], argv );
     sys_error( "execv %s (job %s):", argv[ 0 ], j->name );
 }
