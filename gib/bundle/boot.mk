@@ -15,6 +15,9 @@ SRC = gib/bundle/main.c gib/bundle/sha1.c
 # clear builtin suffix rules
 .SUFFIXES:
 
+DEFAULT: .gib.bin
+	@./.gib.bin
+
 # make sure we do not try to use gib to build these
 $(HDR): ;
 $(SRC): ;
