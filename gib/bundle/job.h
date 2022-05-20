@@ -53,6 +53,7 @@ void job_exec( job_t *j, int outdir_fd, int logdir_fd, int childfd )
     dup2( logfd, 2 );
     dup2( childfd, 3 );
 
+    fprintf( stderr, "gib# out %s\n", j->node->name );
     for ( int i = 0; argv[ i ]; ++i )
         fprintf( stderr, "gib# %s%s\n", i ? "    " : "cmd ", argv[ i ] );
 
