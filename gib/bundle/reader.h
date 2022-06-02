@@ -91,12 +91,12 @@ bool read_line( reader_t *r )
     return true;
 }
 
-span_t fetch_until( span_t *in, char c, char esc )
+span_t fetch_until( span_t *in, char *stop, char esc )
 {
     span_t r = *in;
     bool skip = false;
 
-    while ( in->str < in->end && ( esc && skip || *in->str != c ) )
+    while ( in->str < in->end && ( esc && skip || !strchr( stop, *in->str ) ) )
     {
         skip = *in->str == esc;
         ++ in->str;
@@ -104,7 +104,7 @@ span_t fetch_until( span_t *in, char c, char esc )
 
     r.end = in->str;
 
-    while ( in->str < in->end && *in->str == c )
+    while ( in->str < in->end && strchr( stop, *in->str ) )
         in->str ++;
 
     return r;
@@ -112,17 +112,17 @@ span_t fetch_until( span_t *in, char c, char esc )
 
 span_t fetch_line( span_t *in )
 {
-    return fetch_until( in, '\n', 0 );
+    return fetch_until( in, "\n", 0 );
 }
 
 span_t fetch_word( span_t *in )
 {
-    return fetch_until( in, ' ', 0 );
+    return fetch_until( in, " ", 0 );
 }
 
 span_t fetch_word_escaped( span_t *in )
 {
-    return fetch_until( in, ' ', '\\' );
+    return fetch_until( in, " ", '\\' );
 }
 
 #define FETCH_INT( f )                              \

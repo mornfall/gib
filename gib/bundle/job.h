@@ -112,7 +112,7 @@ span_t path_normalize( span_t in, char *buffer )
 
     while ( !span_empty( in ) )
     {
-        span_t comp = fetch_until( &in, '/', 0 );
+        span_t comp = fetch_until( &in, "/", 0 );
 
         if ( span_eq( comp, ".." ) )
         {

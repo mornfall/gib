@@ -174,7 +174,7 @@ span_t env_expand_singleton( cb_tree *local, cb_tree *global, span_t str )
 var_t *env_resolve( cb_tree *local, cb_tree *global, span_t spec, bool *autovivify )
 {
     span_t sub = spec;
-    span_t base = fetch_until( &sub, '.', 0 );
+    span_t base = fetch_until( &sub, ".", 0 );
     bool make = *autovivify;
 
     if ( !span_empty( base ) && sub.str[ 0 ] == '$' )
@@ -283,7 +283,7 @@ void env_expand( var_t *var, cb_tree *local, cb_tree *global, span_t str, const 
     if ( ref_type == ':' )
     {
         span_t suffix_match = ref_spec;
-        span_t prefix_match = fetch_until( &suffix_match, '*', 0 );
+        span_t prefix_match = fetch_until( &suffix_match, "*", 0 );
 
         var_t *prefix_var = var_alloc( span_lit( "temporary" ) );
         env_expand( prefix_var, local, global, prefix_match, 0 );
