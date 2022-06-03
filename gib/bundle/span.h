@@ -12,6 +12,7 @@ span_t span_mk( const char *str, const char *end ) { span_t s = { str, end }; re
 int    span_len( span_t span )     { return span.end - span.str; }
 bool   span_empty( span_t span )   { return span.str == span.end; }
 span_t span_lit( const char *str ) { return span_mk( str, str + strlen( str ) ); }
+span_t span_tail( span_t span )    { return span_mk( span.str + 1, span.end ); }
 
 const char *span_starts_with( span_t span, const char *prefix )
 {
