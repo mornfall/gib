@@ -161,7 +161,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
         while ( !span_empty( args ) )
         {
             span_t word = fetch_word( &args );
-            env_expand( cmd, &s->locals, s->globals, word, 0 );
+            env_expand( cmd, &s->locals, s->globals, word );
         }
 
         if ( !cmd->list )
@@ -177,7 +177,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
         var_t *dir = env_get( s->globals, dir_name ) ?: env_set( s->globals, dir_name );
 
         var_t *path = var_alloc( span_lit( "manifest-path" ) );
-        env_expand( path, &s->locals, s->globals, args, 0 );
+        env_expand( path, &s->locals, s->globals, args );
 
         for ( value_t *val = path->list; val; val = val->next )
         {
@@ -191,7 +191,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
     {
         if ( span_eq( cmd, "out" ) ) s->out_set = true; else s->meta_set = true;
         var_t *out = env_set( &s->locals, span_lit( "out" ) );
-        env_expand( out, &s->locals, s->globals, args, 0 );
+        env_expand( out, &s->locals, s->globals, args );
         if ( !out->list || out->list->next )
             rl_error( s, "out must expand into exactly one item" );
     }
@@ -211,10 +211,10 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
             while ( !span_empty( args ) )
             {
                 span_t word = fetch_word( &args );
-                env_expand( var, &s->locals, s->globals, word, 0 );
+                env_expand( var, &s->locals, s->globals, word );
             }
         else
-            env_expand( var, &s->locals, s->globals, args, 0 );
+            env_expand( var, &s->locals, s->globals, args );
 
         if ( !new )
             new = var->list;
@@ -252,10 +252,10 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
             while ( !span_empty( args ) )
             {
                 span_t word = fetch_word( &args );
-                env_expand( var, &s->locals, s->globals, word, 0 );
+                env_expand( var, &s->locals, s->globals, word );
             }
         else
-            env_expand( var, &s->locals, s->globals, args, 0 );
+            env_expand( var, &s->locals, s->globals, args );
     }
 
     else if ( span_eq( cmd, "use" ) )
@@ -274,7 +274,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
     else if ( sub )
     {
         var_t *files = var_alloc( span_lit( "sub-files" ) );
-        env_expand( files, &s->locals, s->globals, args, 0 );
+        env_expand( files, &s->locals, s->globals, args );
 
         for ( value_t *val = files->list; val; val = val->next )
             if ( !ignore_missing || access( val->data, R_OK ) != -1 )
@@ -328,7 +328,7 @@ void rl_for( struct rl_state *s, value_t *cmds, fileline_t pos )
     while ( !span_empty( line ) )
     {
         span_t word = fetch_word( &line );
-        env_expand( iter, &s->locals, s->globals, word, 0 );
+        env_expand( iter, &s->locals, s->globals, word );
     }
 
     value_t *val = iter->list;
