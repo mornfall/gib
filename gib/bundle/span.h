@@ -53,3 +53,54 @@ void span_free( span_t s )
 {
     free( ( void * ) s.str );
 }
+
+typedef struct buffer
+{
+    char *data, *end;
+    size_t size;
+} buffer_t;
+
+span_t buffer_span( buffer_t buf ) { return span_mk( buf.data, buf.end ); }
+int    buffer_len( buffer_t buf )  { return buf.end - buf.data; }
+
+buffer_t buffer_alloc( int size )
+{
+    buffer_t buf;
+    buf.data = malloc( size );
+    buf.size = buf.data ? size : 0;
+    buf.end = buf.data;
+    return buf;
+}
+
+buffer_t buffer_realloc( buffer_t buf, int min_size )
+{
+    if ( min_size < buf.size )
+        return buf;
+    if ( buf.size * 2 > min_size )
+        min_size = buf.size * 2;
+
+    int len = buf.end - buf.data;
+    buf.data = realloc( buf.data, min_size + 1 );
+    buf.end = buf.data + len;
+    buf.size = min_size + 1;
+    return buf;
+}
+
+void buffer_free( buffer_t buf )
+{
+    free( buf.data );
+}
+
+buffer_t buffer_append( buffer_t buf, span_t str )
+{
+    buf = buffer_realloc( buf, buffer_len( buf ) + span_len( str ) );
+    buf.end = span_copy( buf.end, str );
+    return buf;
+}
+
+buffer_t buffer_append_char( buffer_t buf, char c )
+{
+    buf = buffer_realloc( buf, buffer_len( buf ) + 1 );
+    *buf.end++ = c;
+    return buf;
+}
