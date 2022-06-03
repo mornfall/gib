@@ -8,6 +8,11 @@ typedef struct span
     const char *str, *end;
 } span_t;
 
+span_t span_mk( const char *str, const char *end ) { span_t s = { str, end }; return s; }
+int    span_len( span_t span )     { return span.end - span.str; }
+bool   span_empty( span_t span )   { return span.str == span.end; }
+span_t span_lit( const char *str ) { return span_mk( str, str + strlen( str ) ); }
+
 const char *span_starts_with( span_t span, const char *prefix )
 {
     const char *str = span.str;
@@ -16,11 +21,6 @@ const char *span_starts_with( span_t span, const char *prefix )
         ++ str, ++ prefix;
 
     return *prefix ? 0 : str;
-}
-
-bool span_empty( span_t span )
-{
-    return span.str == span.end;
 }
 
 bool span_eq( span_t span, const char *eq )
@@ -39,22 +39,6 @@ char *span_copy( char *out, span_t span )
         *out++ = *span.str++;
     *out = 0;
     return out;
-}
-
-int span_len( span_t span )
-{
-    return span.end - span.str;
-}
-
-span_t span_mk( const char *str, const char *end )
-{
-    span_t s = { str, end };
-    return s;
-}
-
-span_t span_lit( const char *str )
-{
-    return span_mk( str, str + strlen( str ) );
 }
 
 span_t span_dup( span_t s )
