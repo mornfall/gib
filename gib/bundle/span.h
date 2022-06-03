@@ -54,6 +54,44 @@ void span_free( span_t s )
     free( ( void * ) s.str );
 }
 
+bool span_match_rec( span_t pat, span_t str, span_t capture[ 9 ], int c_idx, int c_len, bool c_end )
+{
+    if ( c_end )
+        capture[ c_idx - 1 ].end = capture[ c_idx - 1 ].str + c_len;
+
+    if ( span_empty( pat ) && span_empty( str ) )
+        return true;
+    if ( span_empty( pat ) || str.str > str.end )
+        return false;
+
+    if ( !c_len )
+        capture[ c_idx ].str = capture[ c_idx ].end = str.str;
+
+    if ( pat.str[ 0 ] == '%' ) /* non-greedy wildcard */
+        return span_match_rec( span_tail( pat ), str, capture, c_idx + 1, c_len, true ) ||
+               span_match_rec( pat, span_tail( str ), capture, c_idx, c_len + 1, false );
+
+    if ( pat.str[ 0 ] == '*' )
+        return span_match_rec( pat, span_tail( str ), capture, c_idx, c_len + 1, false ) ||
+               span_match_rec( span_tail( pat ), str, capture, c_idx + 1 , c_len, true );
+
+    if ( pat.str[ 0 ] == '\\' ) /* \x matches x, just like posix extended regexes */
+        pat.str ++;
+
+    if ( span_empty( pat ) || span_empty( str ) || pat.str[ 0 ] != str.str[ 0 ] )
+        return false;
+
+    pat.str ++;
+    str.str ++;
+
+    return span_match_rec( pat, str, capture, c_idx, 0, false );
+}
+
+bool span_match( span_t pat, span_t str, span_t capture[ 9 ] )
+{
+    return span_match_rec( pat, str, capture, 0, 0, false );
+}
+
 typedef struct buffer
 {
     char *data, *end;
