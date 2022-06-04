@@ -1,87 +1,145 @@
-# Rules
+# synopsis
 
-The rule file (‹gib.file› and whatever it includes) describes the static part
-of the dependency graph; it is read from top to bottom, and is separated into
-stanzas (delimited by blank lines). Lines starting with # are comments (these
-don't count as blanks).
+    gib [-c config] [target] […]
 
-There are 3 types of stanzas:
+# description
 
- • template definitions which start with ‹def› and can contain anything
-   except a ‹for› or a second ‹def›,
- • ‹for› stanzas which are repeated for each item in a given list,
- • normal stanzas, which can contain any statement except ‹for› and ‹def›.
+‹gib› is a simple build system in the tradition of ‹make›:
 
-A normal stanza may create at most a single node in the dependency graph. This
-happens if it contains an ‹out› or ‹meta› statement (only one of these may
-appear). Node-generating stanzas may additionally use ‹dep› statements and at
-most one ‹cmd›, and may not use ‹sub› nor ‹src›.
+ • it has a simple but powerful language for describing build graphs,
+ • uses timestamps on source files to figure out what needs to be done,
+ • no builtin support for particular programming languages¹,
 
-There are 4 types of nodes in the dependency graph: ‹src›, ‹out›, ‹sys› and
-‹meta›:
+Of course, it comes with some improvements over ‹make› (what would be the
+point otherwise):
 
- • ‹src› nodes correspond to source files and are always dependency-less and
-   have no commands attached either; these must all be created by the source
-   manifest,
- • ‹sys› nodes refer to source files from outside the project, like system
-   headers, the compiler and various other bits that enter the build… like
-   ‹src› nodes, they never have any dependencies or commands; they are only
-   created dynamically (when they are discovered as dependencies during
-   build),
- • ‹out› nodes must be declared statically, can have dependencies on any other
-   node type except ‹meta› and are built by running commands given by their
-   ‹cmd› statement,
- • ‹meta› nodes can depend on anything and can run commands, but must not
-   create any (persistent) files (they mainly exist for convenience, i.e. to
-   bundle a number of outputs under a single name).
+ • the language is simpler and more regular,
+ • variables are true lists (not space-separated strings),
+ • outputs depend on the exact commands used to build them,
+ • support for dynamic dependencies,
+ • first-rate support for script-generated rules,
+ • ‹gib› is much faster – comparable to ‹ninja›.
 
-## Manifest
+And some divergence in design choices:
 
-Source nodes are created by manifest files that are declared using ‹src›
-statements. The paths given to ‹src› are interpreted relative to the source
-directory. The manifest is also split into stanzas, each of which typically
-describes a single directory (see ‹gib.bundle/manifest.txt› for a simple
-example).
+ • build directories are always separate from sources,
+ • …
 
-TODO: Generated manifests.
+¹ Unlike ‹make›, there are also no built-in rules for compiling C programs.
+  The scope of macros is currently limited to a single file, but if/when that
+  limitation is lifted, a small library of macros for building C/C++ projects
+  might be bundled up with ‹gib›, to optionally include in your rule file.
 
-## Variables
+# bundling
 
-The environment is ‘immutable’ in the sense that when a variable is used, it
-is frozen and cannot be changed anymore. Local variables work the same, except
-they only exist within a single stanza (i.e. each stanza can set them to a
-different value). The ‹out›, ‹dep› and ‹cmd› commands set/add to the
-identically named «local» variables:
+Since ‹gib› is very small and only relies on standard POSIX APIs and on C99,
+it can be easily bundled with your project. The source code is canonically
+under ‹gib/bundle› and you can make things transparent for your users by
+creating a toplevel ‹makefile› with just ‹include gib/bundle/boot.mk› in it:
+your users can then start the build by running
 
- • ‹out foo› does an implicit ‹let out foo›,
- • ‹cmd foo bar› does an implicit ‹let cmd›, ‹add= cmd foo›, ‹add= cmd bar›,
- • ‹dep foo› does an implicit ‹add= dep foo›.
+    $ make
 
-The ‹dep› local variable is always created (as an empty list) when entering a
-new stanza.
+which will first compile ‹gib› (takes about a second or two) and then run it,
+forwarding any targets (so ‹make foo› will translate to ‹gib foo›). The
+current version of ‹boot.mk› is tested with GNU make (by far the most common)
+and OpenBSD make (hopefully also representative of other BSD variants).
 
-TODO: Report variable shadowing as an error.
+# project structure
 
-Variables are set-list hybrids with strings as items: scalars and singletons
-are the same thing. ‹add› appends given values to the end of the ‘list’ and
-inserts the values into the (sorted) set. If the same value is added multiple
-times, it appears multiple times in the list but not in the set.
+For simple builds, you can simply have a toplevel ‹gibfile› which contains all
+the rules. In more complicated projects, you will generally want to split the
+rules up and there will likely be additional build-related files. The
+recommended practice is to put them under ‹gib›, with the toplevel rule file
+being ‹gib/main›.
 
-The ‘normal’ variable commands (‹set›, ‹let› and ‹add›) split the literal line
-into words and add each such word as a separate item. This does «not» affect
-any variable expansion: ‹set foo $(bar)› will cause ‹foo› to have the exact
-same number of items as ‹bar›, regardless of any spaces. To «create» values
-with whitespace in them, use ‹add=›, ‹set=› and ‹let=› instead. The ‹out› and
-‹dep› statements are like the ‹=› variants (i.e. they do not split).
+It is a good idea to conditionally include ‹gib/local› after setting your
+configuration variables, so that users can conveniently override your
+defaults.
 
-To use a variable, say ‹$(foo)›; in ‹cmd› statements, each item in a list
-becomes a single argument, while in ‹dep› and ‹add›, the statement is
-effectively repeated for each item. Finally, in ‹out› (which names a node),
-it is an error to use a non-singleton variable.
+# rule syntax
 
-Variable references may be embedded in a string, in which case all possible
-substitutions are performed to get a new list. Barring exceptional
-circumstances, all variable references except one should be singletons.
+The rule file is a sequence of «stanzas» separated by blank lines and made of
+statements. Each statement is exactly one line. If a stanza contains an ‹out›
+statement, then it defines a node of the build graph. Variables declared using
+the ‹let› statement are stanza-local. More about variables below. There are a
+few syntactic categories that appear in the statement list below:
 
-TODO: Do we care about literal ‹$›? And newlines? And leading spaces? Those
-are all currently impossible.
+ • ‹{list}› – a list of strings with implicit word-splitting, giving a «list»
+   of words; this splitting is done by the parser: only literal spaces in the
+   source file qualify, before any variable expansion takes place,
+ • ‹{string}› – a literal string, extending until the end of line, preserving
+   whitespace exactly (including trailing spaces!),
+ • ‹{path}› – like ‹{string}› but names a node of the build graph,
+ • ‹{var}› – name of a variable – no spaces and none of ‹.:~$› are allowed.
+
+The statements are as follows:
+
+ • ‹set {var} [list]› sets a global variable (use ‹set= {var} {string}› to
+   suppress implicit word splitting),
+ • ‹let {var} [list]› same, but the variable is local (‹let=› also exists),
+ • ‹add {var} [list]› append more values to an existing variable (also ‹add=›)
+ • ‹sub {path}› include another rule file (use ‹sub?› to make the inclusion
+   conditional, i.e. not an error if the path does not exist),
+ • ‹src {var₁} {var₂} {path}› read a «manifest» (a list of source files),
+   setting ‹var₁› to the list of all files listed in that manifest and ‹var₂›
+   to the list of all directories (you can use ‹gib.findsrc› to generate the
+   manifest, by hand or on the fly),
+ • ‹out {path}› declare that this stanza describes a node of the build graph
+   with the name given by ‹{path}›,
+ • ‹dep {path}› declare a static dependency,
+ • ‹cmd {list}› set the command that will be executed to build the node,
+ • ‹def {var}› define a macro (see below),
+ • ‹use {var}› use a previously defined macro.
+
+Variables are expanded in ‹{list}›, ‹{string}› and ‹{path}› arguments, but not
+in those of type ‹{var}›. Variable expansion is performed at read time and
+variables, once they are so used, cannot be later changed. Attempting to use
+an undefined variable is an error. Variable references take these forms:
+
+  • ‹$(var)›: expands into the list stored in ‹var› (possibly empty),
+  • ‹foo$(var)bar›: same, but prepend/append ‹foo› and ‹bar› to the expanded
+    values, e.g. if ‹var› contains values ‹x› and ‹y›, the result will be a
+    list with items ‹fooxbar› and ‹fooybar›,
+  • ‹$(var.$key)›: ‹gib› does not allow ‘constructed variable names’ except in
+    this special subscript form (see also below); ‹$key› must be a singleton
+  • ‹$(var:pattern)›: keep only the items from ‹var› that match the pattern
+    (beware, the resulting list will be sorted and deduplicated – on the
+    upside, the prefix portion of the matching is very efficient, even when
+    selecting a few items from lists with tens of thousands of them):
+    ◦ if there are no ‹*› or ‹%› in the pattern, it is «prefix-matched»,
+    ◦ if ‹*› or ‹%› are present, they both match an arbitrary substring
+      (including an empty one), and the pattern is anchored at «both ends» (so
+      that ‹$(var:src/*.cpp)› does what you imagine it should),
+  • ‹$(var:pattern:replacement)›: filter like above, but replace the items
+    from ‹var› with ‹replacement›, provided that:
+    ◦ ‹$n› for ‹n› being a single digit is substituted for the string matched
+      by the n-th ‹*› or ‹%› of the ‹pattern›,
+    ◦ ‹*› matches greedily (longest possible match), as is usual, while ‹%›
+      matches non-greedily (shortest possible match),
+  • ‹$(var~regex)› and ‹$(var~regex~replace)› same as above, but with POSIX
+    extended regular expressions, and with ‹$n› substituted for parenthesised
+    capture expressions (numbered by their opening bracket); much less
+    efficient than patterns [TODO not yet implemented].
+
+Subscripted variables are declared as ‹set foo.bar› and they require that
+‹foo› is itself an existing variable (usually set to be an empty list). Unlike
+regular variables, using ‹foo.bar› that was never set is fine (as long as
+‹foo› exists) and expands to an empty list.
+
+# helper programs
+
+To make certain things easier, ‹gib› comes bundled with a few additional
+programs. To use them, put ‹sub gib/bundle/boot.gib› into your ‹gibfile›
+(after configuration variables, but before your own rules), then simply use
+them as ‹cmd gib.wrapcc …›. The helpers are:
+
+ • ‹gib.findsrc› – generate manifest files on the fly, by traversing your
+   source directory (for use with the ‹src› statement),
+ • ‹gib.wrapcc› – run a given ‹cc› command and extract ‹#include› dependencies
+   for use by ‹gib›,
+ • ‹gib.nochange› – run a command but tell ‹gib› that the output has not
+   changed between runs.
+
+If you do not want to bundle ‹gib› with your project but still use those tools
+(as presumably found on the user's ‹$PATH›), invoke them using ‹/usr/bin/env›.
