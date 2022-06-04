@@ -40,7 +40,7 @@ void var_clear( location_t *loc, var_t *var )
 
 var_t *var_alloc( span_t name )
 {
-    var_t *var = calloc( 1, offsetof( var_t, name ) + span_len( name ) + 1 );
+    var_t *var = calloc( 1, SIZE_NAMED( var_t, span_len( name ) ) );
     span_copy( var->name, name );
     return var;
 }

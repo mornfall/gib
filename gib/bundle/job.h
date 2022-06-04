@@ -96,7 +96,7 @@ job_t *job_add( cb_tree *jobs, node_t *build )
 
     if ( !j )
     {
-        j = calloc( 1, offsetof( job_t, name ) + span_len( name ) + 1 );
+        j = calloc( 1, SIZE_NAMED( job_t, span_len( name ) ) );
         span_copy( j->name, name );
         j->node = build;
         j->changed = true;

@@ -82,7 +82,7 @@ node_t *graph_add( cb_tree *t, span_t name )
 
     if ( !node )
     {
-        node = calloc( 1, offsetof( node_t, name ) + span_len( name ) + 1 );
+        node = calloc( 1, SIZE_NAMED( node_t, + span_len( name ) ) );
         span_copy( node->name, name );
         graph_put( t, node, span_len( name ) );
     }

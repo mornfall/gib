@@ -41,7 +41,7 @@ void load_manifest( cb_tree *nodes, var_t *src, var_t *dirs,
         int len = ( is_dir ? 0 : span_len( dir ) ) + span_len( path ) + slash;
         char *file = NULL;
 
-        node_t *node = calloc( 1, offsetof( node_t, name ) + len + 1 );
+        node_t *node = calloc( 1, SIZE_NAMED( node_t, len ) );
         span_copy( node->name, dir );
         node->frozen = true;
         span_t name = span_mk( node->name, node->name + len );
