@@ -59,7 +59,7 @@ void queue_set_outdir( queue_t *q, cb_tree *env )
     var->frozen = true;
 
     if ( !var->list || var->list->next )
-        error( "variable 'outdir' must be a singleton" );
+        error( NULL, "variable 'outdir' must be a singleton" );
 
     const char *dir = var->list->data;
 
@@ -75,14 +75,14 @@ void queue_set_outdir( queue_t *q, cb_tree *env )
     q->faildir_fd = openat( q->outdir_fd, "_failed", O_DIRECTORY | O_CLOEXEC );
 
     if ( q->outdir_fd < 0 )
-        sys_error( "opening the output directory '%s'", dir );
+        sys_error( NULL, "opening the output directory '%s'", dir );
 
     if ( flock( q->outdir_fd, LOCK_EX | LOCK_NB ) == -1 )
     {
         fprintf( stderr, "output directory '%s' locked (waiting)\n", dir );
 
         if ( flock( q->outdir_fd, LOCK_EX ) == -1 )
-            sys_error( "locking the output directory '%s'", dir );
+            sys_error( NULL, "locking the output directory '%s'", dir );
     }
 
     load_dynamic( q->nodes, q->outdir_fd, "gib.dynamic" );
@@ -123,7 +123,7 @@ void queue_show_result( queue_t *q, node_t *n, job_t *j )
         reader_t log;
 
         if ( !reader_init( &log, q->logdir_fd, filename ) )
-            sys_error( "opening logfile %s", filename );
+            sys_error( NULL, "opening logfile %s", filename );
 
         while ( read_line( &log ) )
             fprintf( stderr, " │ %.*s\n", span_len( log.span ), log.span.str );
@@ -217,7 +217,7 @@ void queue_cleanup_job( queue_t *q, int fd )
     int status;
 
     if ( waitpid( j->pid, &status, 0 ) == -1 )
-        sys_error( "waitpid %d", j->pid );
+        sys_error( NULL, "waitpid %d", j->pid );
 
     if ( WIFEXITED( status ) && WEXITSTATUS( status ) == 0 )
     {
@@ -290,7 +290,7 @@ bool queue_loop( queue_t *q )
                 return true;
             case -1:
                 if ( errno != EINTR )
-                    sys_error( "select" );
+                    sys_error( NULL, "select" );
             default:
                 ;
         }
@@ -374,7 +374,7 @@ void queue_add_goal( queue_t *q, const char *name )
     if ( goal )
         queue_create_jobs( q, goal );
     else
-        error( "goal %s not defined", name );
+        error( NULL, "goal %s not defined", name );
 }
 
 void queue_init( queue_t *q, cb_tree *nodes, const char *srcdir )

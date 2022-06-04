@@ -8,7 +8,7 @@ void load_manifest( cb_tree *nodes, var_t *src, var_t *dirs,
     reader_t r;
 
     if ( !reader_init( &r, filedirfd, manifest ) )
-        sys_error( "opening %s", manifest );
+        sys_error( NULL, "opening %s", manifest );
 
     int dirfd = dup( rootfd );
     span_t dir = span_dup( span_lit( "" ) );
@@ -22,18 +22,18 @@ void load_manifest( cb_tree *nodes, var_t *src, var_t *dirs,
         span_t op = fetch_word( &path );
 
         if ( span_empty( op ) || *op.str != 'd' && *op.str != 'f' )
-            error( "%s:%d: malformed line", r.pos.file, r.pos.line );
+            error( NULL, "%s:%d: malformed line", r.pos.file, r.pos.line );
 
         bool is_dir = *op.str == 'd';
 
         if ( is_dir )
         {
             if ( close( dirfd ) )
-                sys_error( "closing fd %d", dirfd );
+                sys_error( NULL, "closing fd %d", dirfd );
             span_free( dir );
             dir = span_dup( path );
             if ( ( dirfd = open( dir.str, O_DIRECTORY | O_RDONLY ) ) == -1 )
-                sys_error( "%s:%d: opening %s", r.pos.file, r.pos.line, dir );
+                sys_error( NULL, "%s:%d: opening %s", r.pos.file, r.pos.line, dir );
             var_add( dirs, dir );
         }
 
@@ -59,13 +59,13 @@ void load_manifest( cb_tree *nodes, var_t *src, var_t *dirs,
         struct stat st;
 
         if ( fstatat( dirfd, is_dir ? "." : file, &st, 0 ) == -1 )
-            sys_error( "%s:%d: stat failed for %s", r.pos.file, r.pos.line, node->name );
+            sys_error( NULL, "%s:%d: stat failed for %s", r.pos.file, r.pos.line, node->name );
 
         if ( !graph_put( nodes, node, len ) )
         {
             node_t *prev = graph_get( nodes, name );
             if ( prev->frozen )
-                error( "%s:%d: duplicate node '%s'", r.pos.file, r.pos.line, node->name );
+                error( NULL, "%s:%d: duplicate node '%s'", r.pos.file, r.pos.line, node->name );
             prev->frozen = true;
             free( node );
             node = prev;
@@ -76,5 +76,5 @@ void load_manifest( cb_tree *nodes, var_t *src, var_t *dirs,
     }
 
     if ( close( dirfd ) )
-        sys_error( "closing fd %d", dirfd );
+        sys_error( NULL, "closing fd %d", dirfd );
 }

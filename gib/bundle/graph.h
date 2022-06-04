@@ -116,7 +116,7 @@ void graph_add_dep( cb_tree *t, node_t *n, span_t name, bool dyn )
     }
 
     if ( !dep )
-        error( "dependency %.*s not defined", span_len( name ), name );
+        error( NULL, "dependency %.*s not defined", span_len( name ), name );
 
     if ( dyn )
         cb_insert( &n->deps_dyn, dep, offsetof( node_t, name ), span_len( name ) );

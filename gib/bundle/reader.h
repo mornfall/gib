@@ -40,7 +40,7 @@ bool shift_buffer( reader_t *r )
     r->buffer_use -= delete;
 
     if ( r->buffer_use == BUFFER )
-        error( "ran out of line buffer reading %s, line %d", r->pos.file, r->pos.line );
+        error( NULL, "ran out of line buffer reading %s, line %d", r->pos.file, r->pos.line );
 
     memmove( r->buffer, r->span.str, r->buffer_use );
 
@@ -52,7 +52,7 @@ bool shift_buffer( reader_t *r )
     if ( bytes == 0 )
     {
         if ( close( r->fd ) )
-            sys_error( "closing fd %d", r->fd );
+            sys_error( NULL, "closing fd %d", r->fd );
         r->fd = -1;
     }
 

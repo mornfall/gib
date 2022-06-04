@@ -16,7 +16,7 @@ bool writer_flush( writer_t *w )
 {
     int wrote = write( w->fd, w->buffer, w->ptr );
     if ( wrote < 0 )
-        sys_error( "writing %s", w->tmp );
+        sys_error( NULL, "writing %s", w->tmp );
     w->ptr -= wrote;
     memmove( w->buffer, w->buffer + wrote, w->ptr );
     return w->ptr > 0;
@@ -33,7 +33,7 @@ int writer_print( writer_t *w, const char *fmt, ... )
         va_end( ap );
 
         if ( need < 0 )
-            sys_error( "vsnprintf" );
+            sys_error( NULL, "vsnprintf" );
 
         if ( need >= BUFFER - w->ptr )
             writer_flush( w );
@@ -49,7 +49,7 @@ void writer_append( writer_t *w, span_t span )
         while ( writer_flush( w ) );
         int bytes = write( w->fd, span.str, span_len( span ) );
         if ( bytes < 0 )
-            sys_error( "writing %s", w->tmp );
+            sys_error( NULL, "writing %s", w->tmp );
         span.str += bytes;
     }
     else
@@ -65,7 +65,7 @@ void writer_append( writer_t *w, span_t span )
 void writer_open( writer_t *w, int dirfd, const char *path )
 {
     if ( asprintf( &w->tmp, "%s.%d", path, getpid() ) < 0 )
-        sys_error( "asprintf" );
+        sys_error( NULL, "asprintf" );
 
     w->dirfd = dirfd;
     w->file = path;
@@ -73,7 +73,7 @@ void writer_open( writer_t *w, int dirfd, const char *path )
     w->fd = openat( dirfd, w->tmp, O_CREAT | O_WRONLY | O_EXCL | O_CLOEXEC, 0666 );
 
     if ( w->fd < 0 )
-        sys_error( "creating %s", w->tmp );
+        sys_error( NULL, "creating %s", w->tmp );
 }
 
 void writer_close( writer_t *w )
@@ -81,7 +81,7 @@ void writer_close( writer_t *w )
     while ( writer_flush( w ) );
 
     if ( renameat( w->dirfd, w->tmp, w->dirfd, w->file ) == -1 )
-        sys_error( "renaming %s to %s", w->tmp, w->file );
+        sys_error( NULL, "renaming %s to %s", w->tmp, w->file );
     close( w->fd );
     free( w->tmp );
 }

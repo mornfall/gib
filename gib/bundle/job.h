@@ -24,7 +24,7 @@ void job_exec( job_t *j, int outdir_fd, int logdir_fd, int childfd )
     {
         if ( i == argv_size - 1 )
             if ( !( argv = realloc( argv, sizeof( char * ) * ( argv_size += argv_size ) ) ) )
-                sys_error( "realloc" );
+                sys_error( NULL, "realloc" );
 
         argv[ i++ ] = n->data;
     }
@@ -43,10 +43,10 @@ void job_exec( job_t *j, int outdir_fd, int logdir_fd, int childfd )
     int nullfd = open( "/dev/null", O_RDONLY | O_CLOEXEC );
 
     if ( logfd < 0 )
-        sys_error( "opening logfile %s", logname );
+        sys_error( NULL, "opening logfile %s", logname );
 
     if ( nullfd < 0 )
-        sys_error( "opening /dev/null" );
+        sys_error( NULL, "opening /dev/null" );
 
     dup2( nullfd, 0 );
     dup2( logfd, 1 );
@@ -58,7 +58,7 @@ void job_exec( job_t *j, int outdir_fd, int logdir_fd, int childfd )
         fprintf( stderr, "gib# %s%s\n", i ? "    " : "cmd ", argv[ i ] );
 
     execv( argv[ 0 ], argv );
-    sys_error( "execv %s (job %s):", argv[ 0 ], j->name );
+    sys_error( NULL, "execv %s (job %s):", argv[ 0 ], j->name );
 }
 
 void job_fork( job_t *j, int outdir_fd, int logdir_fd )
@@ -66,7 +66,7 @@ void job_fork( job_t *j, int outdir_fd, int logdir_fd )
     int fds[ 2 ];
 
     if ( socketpair( AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, fds ) )
-        sys_error( "socketpair %s", j->name );
+        sys_error( NULL, "socketpair %s", j->name );
 
     j->pipe_fd = fds[ 0 ];
     j->pid = fork();
@@ -77,7 +77,7 @@ void job_fork( job_t *j, int outdir_fd, int logdir_fd )
     close( fds[ 1 ] );
 
     if ( j->pid == -1 )
-        sys_error( "fork %s [%s]:", j->name, j->node->cmd->data );
+        sys_error( NULL, "fork %s [%s]:", j->name, j->node->cmd->data );
 }
 
 job_t *job_find( cb_tree *jobs, node_t *node )

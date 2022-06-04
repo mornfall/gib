@@ -1,5 +1,6 @@
 #include "reader.h"
 #include "writer.h"
+#include "error.h"
 #include <sys/wait.h>
 
 bool process_line( span_t line, writer_t *out )
@@ -37,7 +38,7 @@ void process_depfile( const char *path )
     bool found = false;
 
     if ( !reader_init( &reader, AT_FDCWD, path ) )
-        sys_error( "open %s", path );
+        sys_error( NULL, "open %s", path );
 
     writer.file = writer.tmp = NULL;
     writer.ptr = 0;
@@ -55,7 +56,7 @@ void process_depfile( const char *path )
     }
 
     if ( !found )
-        error( "did not find the dependency line" );
+        error( NULL, "did not find the dependency line" );
 
     writer_flush( &writer );
 }
@@ -67,12 +68,12 @@ bool wrap( const char **argv, int *rv )
     if ( pid == 0 )
     {
         execv( argv[ 0 ], argv );
-        sys_error( "execv %s", argv[ 0 ] );
+        sys_error( NULL, "execv %s", argv[ 0 ] );
         exit( 127 );
     }
 
     if ( pid < 0 )
-        sys_error( "fork" );
+        sys_error( NULL, "fork" );
 
     int status;
     waitpid( pid, &status, 0 );
@@ -97,10 +98,10 @@ int main( int argc, char **argv )
     int rv;
 
     if ( argc <= 1 )
-        error( "need at least 1 argument" );
+        error( NULL, "need at least 1 argument" );
 
     if ( asprintf( &depfile, "-MF./wrapcc.%d.d", getpid() ) < 0 )
-        sys_error( "asprintf" );
+        sys_error( NULL, "asprintf" );
 
     off_t stderr_pos = lseek( 2, 0, SEEK_CUR );
     char *argv_n[ argc + 3 ];

@@ -36,7 +36,7 @@ void var_clear( var_t *var )
     var->list = 0;
 
     if ( var->frozen )
-        error( "cannot reset frozen variable %s", var->name );
+        error( NULL, "cannot reset frozen variable %s", var->name );
 }
 
 var_t *var_alloc( span_t name )
@@ -75,7 +75,7 @@ var_t *env_set( cb_tree *env, span_t name )
 void var_add_value( var_t *var, value_t *val )
 {
     if ( var->frozen )
-        error( "cannot change frozen variable %s", var->name );
+        error( NULL, "cannot change frozen variable %s", var->name );
 
     val->next = 0;
     cb_insert( &var->set, val, offsetof( value_t, data ), -1 );
@@ -167,7 +167,7 @@ span_t env_expand_singleton( cb_tree *local, cb_tree *global, span_t str )
     var_t *var = env_get( local, str ) ?: env_get( global, str );
 
     if ( !var || !var->list || var->list->next )
-        error( "expansion '%.*s is not a singleton", span_len( str ), str.str );
+        error( NULL, "expansion '%.*s is not a singleton", span_len( str ), str.str );
 
     return span_lit( var->list->data );
 }
@@ -308,7 +308,7 @@ void env_expand_list( env_expand_t s, span_t str, const char *ref )
         ++ ref;
 
     if ( ref < str.end && ref + 2 >= str.end )
-        error( "unexpected $ at the end of string" );
+        error( NULL, "unexpected $ at the end of string" );
 
     if ( ref == str.end )
         return var_add( s.var, str );
@@ -317,7 +317,7 @@ void env_expand_list( env_expand_t s, span_t str, const char *ref )
     int counter = 0;
 
     if ( *ref_end != '(' )
-        error( "expected ( after $ in %.*s", span_len( str ), str );
+        error( NULL, "expected ( after $ in %.*s", span_len( str ), str );
 
     while ( ref_end < str.end )
     {
@@ -347,7 +347,7 @@ void env_expand_list( env_expand_t s, span_t str, const char *ref )
     if ( !ref_var && vivify )
         return;
     if ( !ref_var )
-        error( "invalid variable reference in %.*s", span_len( str ), str );
+        error( NULL, "invalid variable reference in %.*s", span_len( str ), str );
 
     ref_var->frozen = true;
 

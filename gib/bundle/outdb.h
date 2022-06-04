@@ -39,7 +39,7 @@ void load_dynamic( cb_tree *nodes, int dirfd, const char *path )
         if ( errno == ENOENT )
             return;
         else
-            sys_error( "reading %s", path );
+            sys_error( NULL, "reading %s", path );
     }
 
     while ( read_line( &r ) )
@@ -89,7 +89,7 @@ void load_stamps( cb_tree *nodes, int dirfd, const char *file )
         if ( errno == ENOENT )
             return;
         else
-            sys_error( "opening %s", file );
+            sys_error( NULL, "opening %s", file );
     }
 
     while ( read_line( &r ) )
@@ -108,7 +108,7 @@ void load_stamps( cb_tree *nodes, int dirfd, const char *file )
              !fetch_uint( &dirty, 16, &num_dirty ) ||
              !fetch_uint( &cmdhash, 16, &node->cmd_hash ) )
 
-            error( "%s:%d: error reading timestamp(s): %.*s %.*s %.*s",
+            error( NULL, "%s:%d: error reading timestamp(s): %.*s %.*s %.*s",
                     file, r.pos.line,
                     span_len( updated ), updated.str,
                     span_len( changed ), changed.str,

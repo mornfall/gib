@@ -54,7 +54,7 @@ void state_init( state_t *s )
     struct utsname uts;
 
     if ( uname( &uts ) < 0 )
-        sys_error( "uname" );
+        sys_error( NULL, "uname" );
 
     for ( char *s = uts.sysname; *s != 0; ++s )
         if ( isupper( *s ) )
@@ -78,7 +78,7 @@ void state_load( state_t *s )
 
     int srcdir_fd = open( ".", O_DIRECTORY | O_CLOEXEC );
     if ( srcdir_fd < 0 )
-        sys_error( "opening source directory" );
+        sys_error( NULL, "opening source directory" );
 
     if ( faccessat( srcdir_fd, "gibfile", R_OK, 0 ) == 0 )
         main = "gibfile";
@@ -95,7 +95,7 @@ void state_load( state_t *s )
                            O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0666 );
 
     if ( debug_fd < 0 )
-        sys_error( "opening gib.debug for writing" );
+        sys_error( NULL, "opening gib.debug for writing" );
     else
         s->debug = fdopen( debug_fd, "w" );
 }
@@ -171,7 +171,7 @@ void parse_options( state_t *s, int argc, char *argv[] )
 
     while ( ( ch = getopt( argc, argv, "c:V:" ) ) != -1 )
         if ( !process_option( s, ch, optarg ) )
-            usage(), error( "unknown option -%c", ch );
+            usage(), error( NULL, "unknown option -%c", ch );
 
     s->select_head = s->select_tail = calloc( 1, sizeof( selector_t ) );
 
@@ -209,7 +209,7 @@ void selector_fill( state_t *s, selector_t *sel )
             if ( var )
                 sel->matched = var->set; /* share */
             else
-                error( "nothing is known about '%s'", sel->string );
+                error( NULL, "nothing is known about '%s'", sel->string );
         }
     }
 }
