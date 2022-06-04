@@ -34,7 +34,7 @@ typedef struct
     cb_tree *nodes;
     cb_tree jobs;
 
-    job_t *job_next, *job_last;
+    job_t *job_next, *job_last, *job_failed;
     job_t *running[ MAX_FD ];
 
     int skipped_count;
@@ -97,7 +97,7 @@ void queue_set_outdir( queue_t *q, cb_tree *env )
     closedir( fdir );
 }
 
-void queue_show_result( queue_t *q, node_t *n, job_t *j )
+void queue_show_result( queue_t *q, node_t *n, job_t *j, bool log_only )
 {
     const char *status = "??";
     int color = 0;
@@ -109,7 +109,7 @@ void queue_show_result( queue_t *q, node_t *n, job_t *j )
     else if ( j && j->warned ) status = "ok", color = 33, q->ok_count ++;
     else                       status = "ok", color = 32, q->ok_count ++;
 
-    if ( !_signalled && n->failed || changed && j && j->warned )
+    if ( log_only || !_signalled && n->failed || changed && j && j->warned )
     {
         fprintf( stderr, "\033[J" );
         char filename[ strlen( n->name ) + 5 ], *p = filename;
@@ -133,7 +133,7 @@ void queue_show_result( queue_t *q, node_t *n, job_t *j )
 
     q->todo_count --;
 
-    if ( !_signalled )
+    if ( !_signalled && !log_only )
         fprintf( stderr, "\033[J\033[%dm%s\033[0m %s\n", color, status, n->name );
 }
 
@@ -179,7 +179,7 @@ void queue_skip( queue_t *q, node_t *n )
     if ( n->failed )
         return;
 
-    queue_show_result( q, n, NULL );
+    queue_show_result( q, n, NULL, false );
     n->failed = true;
 
     for ( cb_iterator i = cb_begin( &n->blocking ); !cb_end( &i ); cb_next( &i ) )
@@ -231,10 +231,13 @@ void queue_cleanup_job( queue_t *q, int fd )
             n->stamp_changed = n->stamp_want;
     }
     else if ( !_signalled )
+    {
         n->failed = true;
+        q->job_failed = q->job_failed ?: j;
+    }
 
     q->running_count --;
-    queue_show_result( q, n, j );
+    queue_show_result( q, n, j, false );
 
     for ( cb_iterator i = cb_begin( &j->node->blocking ); !cb_end( &i ); cb_next( &i ) )
     {
@@ -399,6 +402,7 @@ void queue_init( queue_t *q, cb_tree *nodes, const char *srcdir )
 
     q->job_next = NULL;
     q->job_last = NULL;
+    q->job_failed = NULL;
 
     for ( int i = 0; i < MAX_FD; ++i )
         q->running[ i ] = 0;
