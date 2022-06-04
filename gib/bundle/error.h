@@ -73,7 +73,6 @@ void location_push_current( struct location *s, const char *what )
 
 fileline_t location_push_named( struct location *s, span_t name, const char *what )
 {
-    struct location_stack *new = malloc( sizeof( struct location_stack ) );
     assert( cb_contains( &s->names, name ) );
     fileline_t *pos = cb_find( &s->names, name ).leaf;
     location_push_fixed( s, *pos, what );
