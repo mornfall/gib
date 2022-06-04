@@ -1,7 +1,9 @@
-set cc /usr/bin/cc
-set cflags -g
+set prefix  /usr/local
+set cc      /usr/bin/cc
+set cflags  -g
 set ldflags
 set all
+set install
 
 sub? gib/local
 sub  gib/bundle/boot.gib
@@ -21,3 +23,14 @@ let obj gib/bundle/main.o gib/bundle/sha1.o
 dep $(obj)
 dep $(gibdir)
 cmd $(cc) $(cflags) -o $(out) $(obj)
+
+out $(prefix)/bin/gib
+dep bin/gib
+cmd /usr/bin/install -D bin/gib $(out)
+add install $(out)
+
+for f gib.findsrc gib.wrapcc gib.nochange
+out $(prefix)/bin/$(f)
+dep $(f)
+cmd /usr/bin/install -D $(f) $(out)
+add install $(out)
