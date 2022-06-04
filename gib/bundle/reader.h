@@ -2,13 +2,6 @@
 #include "common.h"
 #include "span.h"
 
-typedef struct fileline
-{
-    const char*file;
-    int line;
-    char name[0];
-} fileline_t;
-
 typedef struct reader
 {
     int fd;

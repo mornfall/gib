@@ -31,6 +31,7 @@ typedef struct selector
 typedef struct
 {
     queue_t queue;
+    location_t loc;
 
     char *srcdir;
     FILE *debug;
@@ -48,6 +49,7 @@ void state_init( state_t *s )
     s->srcdir = getcwd( 0, 0 );
     s->show_var = NULL;
 
+    location_init( &s->loc );
     cb_init( &s->env );
     cb_init( &s->nodes );
 
@@ -85,7 +87,7 @@ void state_load( state_t *s )
 
     queue_init( &s->queue, &s->nodes, s->srcdir );
     load_rules( &s->nodes, &s->env, &s->queue, srcdir_fd,
-                graph_find_file( &s->nodes, span_lit( main ) ) );
+                graph_find_file( &s->nodes, span_lit( main ) ), &s->loc );
     queue_set_outdir( &s->queue, &s->env );
 
     if ( ( jobs_var = env_get( &s->env, span_lit( "jobs" ) ) ) && jobs_var->list )

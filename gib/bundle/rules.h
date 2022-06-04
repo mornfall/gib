@@ -5,6 +5,7 @@
 #include "queue.h"
 #include "manifest.h"
 #include "reader.h"
+#include "error.h"
 
 struct rl_stack
 {
@@ -17,59 +18,17 @@ struct rl_state /* rule loader */
 {
     reader_t reader;
     cb_tree locals, *globals, templates;
-    cb_tree positions;
     cb_tree *nodes;
     const char *srcdir;
     bool out_set, cmd_set, meta_set;
     bool stanza_started;
-    struct rl_stack *stack;
+    struct location *loc;
 
     int srcdir_fd;
     queue_t *queue;
 };
 
-void load_rules( cb_tree *nodes, cb_tree *env, queue_t *q, int srcdir_fd, node_t *node );
-
-void rl_error( struct rl_state *s, const char *reason, ... )
-{
-    va_list ap;
-    va_start( ap, reason );
-
-    for ( struct rl_stack *bt = s->stack; bt; bt = bt->next )
-        fprintf( stderr, "%s:%d: %s\n", bt->pos.file, bt->pos.line, bt->what );
-
-    fprintf( stderr, "%s:%d: ", s->reader.pos.file, s->reader.pos.line );
-    vfprintf( stderr, reason, ap );
-    fprintf( stderr, "\n" );
-
-    va_end( ap );
-    exit( 3 );
-}
-
-void rl_pop( struct rl_state *s )
-{
-    assert( s->stack );
-    struct rl_stack *del = s->stack;
-    s->stack = s->stack->next;
-    free( del );
-}
-
-void rl_push( struct rl_state *s, const char *what )
-{
-    struct rl_stack *new = malloc( sizeof( struct rl_stack ) );
-    new->pos  = s->reader.pos;
-    new->what = what;
-    new->next = s->stack;
-    s->stack = new;
-}
-
-void rl_set_position( struct rl_state *s, span_t what )
-{
-    fileline_t *pos = malloc( offsetof( fileline_t, name ) + span_len( what ) + 1 );
-    *pos = s->reader.pos;
-    span_copy( pos->name, what );
-    cb_insert( &s->positions, pos, offsetof( fileline_t, name ), span_len( what ) );
-}
+void load_rules( cb_tree *nodes, cb_tree *env, queue_t *q, int srcdir_fd, node_t *node, location_t *loc );
 
 void rl_get_file( struct rl_state *s, node_t *n )
 {
@@ -81,7 +40,7 @@ void rl_get_file( struct rl_state *s, node_t *n )
     queue_monitor( s->queue, false );
 
     if ( s->queue->failed_count != 0 )
-        rl_error( s, "error building %s", n->name );
+        error( s->loc, "error building %s", n->name );
 }
 
 int rl_dirfd( struct rl_state *s, node_t *node )
@@ -104,13 +63,13 @@ void rl_stanza_end( struct rl_state *s )
     if ( s->out_set || s->meta_set )
     {
         if ( s->out_set && s->meta_set )
-            rl_error( s, "can't have both 'out' and 'meta' in the same stanza" );
+            error( s->loc, "can't have both 'out' and 'meta' in the same stanza" );
 
         span_t name = span_lit( env_get( &s->locals, span_lit( "out" ) )->list->data );
         node_t *node = graph_add( s->nodes, name );
 
         if ( node->frozen )
-            rl_error( s, "duplicate output: %s", name.str );
+            error( s->loc, "duplicate output: %s", name.str );
 
         node->type = s->meta_set ? meta_node : out_node;
         node->frozen = true;
@@ -165,7 +124,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
         }
 
         if ( !cmd->list )
-            rl_error( s, "empty command" );
+            error( s->loc, "empty command" );
     }
 
     else if ( span_eq( cmd, "src" ) )
@@ -193,7 +152,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
         var_t *out = env_set( &s->locals, span_lit( "out" ) );
         env_expand( out, &s->locals, s->globals, args );
         if ( !out->list || out->list->next )
-            rl_error( s, "out must expand into exactly one item" );
+            error( s->loc, "out must expand into exactly one item" );
     }
 
     else if ( add || dep )
@@ -203,7 +162,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
         var_t *var = env_resolve( &s->locals, s->globals, name, &autovivify );
 
         if ( !var )
-            rl_error( s, "cannot add to a non-existent variable %.*s", span_len( name ), name.str );
+            error( s->loc, "cannot add to a non-existent variable %.*s", span_len( name ), name.str );
 
         value_t *new = var->last;
 
@@ -230,7 +189,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
                 node_t *dep = graph_get( s->nodes, span_lit( name ) );
 
                 if ( !dep || !dep->frozen )
-                    rl_error( s, "dep: node for '%s' does not exist", new->data );
+                    error( s->loc, "dep: node for '%s' does not exist", new->data );
 
                 memmove( new->data, name, strlen( name ) + 1 );
             }
@@ -241,12 +200,12 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
         span_t name = fetch_word( &args );
 
         if ( env_get( &s->templates, name ) )
-            rl_error( s, "name '%.*s' is already used for a template", span_len( name ), name.str );
+            error( s->loc, "name '%.*s' is already used for a template", span_len( name ), name.str );
 
         var_t *var = env_set( set ? s->globals : &s->locals, name );
 
         if ( set )
-            rl_set_position( s, name );
+            location_set( s->loc, name );
 
         if ( split )
             while ( !span_empty( args ) )
@@ -264,11 +223,11 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
         var_t *var = env_get( &s->templates, name );
 
         if ( !var )
-            rl_error( s, "undefined template %.*s\n", span_len( name ), name.str );
+            error( s->loc, "undefined template %.*s\n", span_len( name ), name.str );
 
-        assert( cb_contains( &s->positions, name ) );
-        fileline_t *pos = cb_find( &s->positions, name ).leaf;
-        rl_replay( s, var->list, *pos );
+        fileline_t pos = location_push_named( s->loc, name, "in a macro defined here" );
+        rl_replay( s, var->list, pos );
+        location_pop( s->loc );
     }
 
     else if ( sub )
@@ -279,9 +238,11 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
         for ( value_t *val = files->list; val; val = val->next )
             if ( !ignore_missing || access( val->data, R_OK ) != -1 )
             {
+                location_push_current( s->loc, "included from here" );
                 node_t *n = graph_find_file( s->nodes, span_lit( val->data ) );
                 rl_get_file( s, n );
-                load_rules( s->nodes, s->globals, s->queue, s->srcdir_fd, n );
+                load_rules( s->nodes, s->globals, s->queue, s->srcdir_fd, n, s->loc );
+                location_pop( s->loc );
             }
     }
 
@@ -292,9 +253,6 @@ void rl_for( struct rl_state *s, value_t *cmds, fileline_t pos );
 
 void rl_replay( struct rl_state *s, value_t *stmt, fileline_t pos )
 {
-    fileline_t bak = s->reader.pos;
-    s->reader.pos = pos; /* FIXME eww */
-
     while ( stmt )
     {
         span_t line = span_lit( stmt->data );
@@ -306,12 +264,12 @@ void rl_replay( struct rl_state *s, value_t *stmt, fileline_t pos )
             break;
         }
 
+        pos.line ++;
+        location_push_fixed( s->loc, pos, NULL );
         rl_command( s, cmd, line );
-        s->reader.pos.line ++;
+        location_pop( s->loc );
         stmt = stmt->next;
     }
-
-    s->reader.pos = bak;
 }
 
 void rl_for( struct rl_state *s, value_t *cmds, fileline_t pos )
@@ -333,9 +291,13 @@ void rl_for( struct rl_state *s, value_t *cmds, fileline_t pos )
 
     value_t *val = iter->list;
     cmds = cmds->next;
+    char location[ 1024 ];
 
     while ( val )
     {
+        snprintf( location, 1024, "while evaluating for loop with %.*s = %s",
+                  span_len( name ), name.str, val->data );
+        location_push_current( s->loc, location );
         rl_stanza_clear( s );
         env_dup( &s->locals, &saved );
         var_t *ivar = env_set( &s->locals, name );
@@ -343,6 +305,7 @@ void rl_for( struct rl_state *s, value_t *cmds, fileline_t pos )
         rl_replay( s, cmds, pos );
         rl_stanza_end( s );
         val = val->next;
+        location_pop( s->loc );
     }
 
     var_free( iter );
@@ -360,18 +323,16 @@ void rl_statement( struct rl_state *s )
         return rl_command( s, cmd, s->reader.span );
 
     if ( s->stanza_started )
-        rl_error( s, "def/for in the middle of a stanza" );
-
-    rl_push( s, is_for ? "evaluating for loop" : "evaluating def" );
+        error( s->loc, "def/for in the middle of a stanza" );
 
     span_t name = span_dup( fetch_word( &s->reader.span ) );
     span_t args = span_dup( s->reader.span );
 
     if ( env_get( s->globals, name ) )
-        rl_error( s, "name '%.*s' is already used for a variable", span_len( name ), name.str );
+        error( s->loc, "name '%.*s' is already used for a variable", span_len( name ), name.str );
 
     if ( is_def )
-        rl_set_position( s, name );
+        location_set( s->loc, name );
 
     var_t *cmds = is_def ? env_set( &s->templates, name )
                          : var_alloc( span_lit( "for-body" ) );
@@ -387,23 +348,21 @@ void rl_statement( struct rl_state *s )
     else
         cmds = 0;
 
-    rl_pop( s );
     var_free( cmds );
     span_free( name );
     span_free( args );
 }
 
-void load_rules( cb_tree *nodes, cb_tree *env, queue_t *q, int srcdir_fd, node_t *node )
+void load_rules( cb_tree *nodes, cb_tree *env, queue_t *q, int srcdir_fd, node_t *node, location_t *loc )
 {
     struct rl_state s;
 
     s.globals = env;
     cb_init( &s.locals );
     cb_init( &s.templates );
-    cb_init( &s.positions );
+    s.loc = loc;
     s.nodes = nodes;
     s.queue = q;
-    s.stack = 0;
     s.srcdir = env_get( env, span_lit( "srcdir" ) )->list->data;
     s.srcdir_fd = srcdir_fd;
 
@@ -411,8 +370,9 @@ void load_rules( cb_tree *nodes, cb_tree *env, queue_t *q, int srcdir_fd, node_t
         q->stamp_rules = node->stamp_changed;
 
     if ( !reader_init( &s.reader, rl_dirfd( &s, node ), node->name ) )
-        sys_error( "opening %s %s", node->type == out_node ? "output" : "source", node->name );
+        sys_error( s.loc, "opening %s %s", node->type == out_node ? "output" : "source", node->name );
 
+    location_push_reader( s.loc, &s.reader );
     rl_stanza_clear( &s );
 
     while ( read_line( &s.reader ) )
@@ -427,4 +387,5 @@ void load_rules( cb_tree *nodes, cb_tree *env, queue_t *q, int srcdir_fd, node_t
     }
 
     rl_stanza_end( &s );
+    location_pop( s.loc );
 }

@@ -1,6 +1,7 @@
 HDR = gib/bundle/span.h \
       gib/bundle/critbit.h \
       gib/bundle/common.h \
+      gib/bundle/error.h \
       gib/bundle/env.h \
       gib/bundle/graph.h \
       gib/bundle/job.h \

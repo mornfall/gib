@@ -14,28 +14,60 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
+#include "span.h"
+#include "critbit.h"
+
 #define BUFFER 8192
 
-/* TODO error handling? */
-
-void sys_error( const char *reason, ... )
+typedef struct fileline
 {
-    const char *err = strerror( errno );
+    const char *file;
+    int line;
+    char name[0];
+} fileline_t;
 
+struct location_stack
+{
+    fileline_t pos;
+    const char *what;
+    struct reader *reader;
+    struct location_stack *next;
+};
+
+typedef struct location
+{
+    struct location_stack *stack;
+    cb_tree names;
+} location_t;
+
+void location_vprint( struct location *s, const char *reason, va_list ap );
+void location_print( struct location *s, const char *reason, ... )
+{
     va_list ap;
     va_start( ap, reason );
-    vfprintf( stderr, reason, ap );
-    fprintf( stderr, ": %s\n", err );
+    location_vprint( s, reason, ap );
     va_end( ap );
-    exit( 1 );
 }
 
-void error( const char *reason, ... )
+void error( struct location *s, const char *reason, ... )
 {
     va_list ap;
     va_start( ap, reason );
-    vfprintf( stderr, reason, ap );
-    fprintf( stderr, "\n" );
+    location_vprint( s, reason, ap );
     va_end( ap );
-    exit( 2 );
+    exit( 3 );
+}
+
+void sys_error( struct location *s, const char *reason, ... )
+{
+    const char *err = strerror( errno );
+    char msg[ 1024 ];
+
+    va_list ap;
+    va_start( ap, reason );
+    char *ptr = msg + vsnprintf( msg, 1024, reason, ap );
+    snprintf( ptr, 1024 - ( ptr - msg ), ": %s", err );
+    location_print( s, "%s", msg );
+    va_end( ap );
+    exit( 1 );
 }
