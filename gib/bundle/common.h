@@ -18,6 +18,9 @@
 #include "critbit.h"
 
 #define BUFFER 8192
+#define SIZE_NAMED( type, len ) max( offsetof( type, name ) + len + 1, sizeof( type ) )
+
+int max( int a, int b ) { return a > b ? a : b; }
 
 typedef struct fileline
 {

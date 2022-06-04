@@ -81,7 +81,7 @@ fileline_t location_push_named( struct location *s, span_t name, const char *wha
 
 void location_set( struct location *s, span_t name )
 {
-    fileline_t *pos = malloc( offsetof( fileline_t, name ) + span_len( name ) + 1 );
+    fileline_t *pos = malloc( SIZE_NAMED( fileline_t, span_len( name ) ) );
 
     struct location_stack *top = s->stack;
     while ( !top->reader )
