@@ -78,9 +78,13 @@ void state_free( state_t *s )
     for ( cb_iterator i = cb_begin( &s->nodes ); !cb_end( &i ); cb_next( &i ) )
         graph_free( cb_get( &i ) );
 
+    for ( selector_t *sel = s->select_head, *next; sel; sel = next )
+        next = sel->next, free( sel );
+
     free( s->srcdir );
     env_clear( &s->env, true );
     cb_clear( &s->nodes, true );
+    cb_clear( &s->queue.jobs, true );
     location_free( &s->loc );
 }
 

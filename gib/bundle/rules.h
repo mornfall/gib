@@ -48,18 +48,18 @@ int rl_dirfd( struct rl_state *s, node_t *node )
     return node->type == out_node ? s->queue->outdir_fd : s->srcdir_fd;
 }
 
-void rl_stanza_clear( struct rl_state *s, bool release )
+void rl_stanza_clear( struct rl_state *s )
 {
     s->out_set = false;
     s->cmd_set = false;
     s->meta_set = false;
     s->stanza_started = false;
 
-    env_clear( &s->locals, release );
+    env_clear( &s->locals, true );
     env_set( s->loc, &s->locals, span_lit( "dep" ) );
 }
 
-void rl_stanza_end( struct rl_state *s, bool release )
+void rl_stanza_end( struct rl_state *s )
 {
     if ( s->out_set || s->meta_set )
     {
@@ -95,7 +95,7 @@ void rl_stanza_end( struct rl_state *s, bool release )
         }
     }
 
-    rl_stanza_clear( s, release );
+    rl_stanza_clear( s );
 }
 
 void rl_replay( struct rl_state *s, value_t *cmds, fileline_t pos );
@@ -147,6 +147,9 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
             rl_get_file( s, n );
             load_manifest( s->nodes, src, dir, s->srcdir_fd, rl_dirfd( s, n ), val->data );
         }
+
+        var_free( path );
+        free( path );
     }
 
     else if ( span_eq( cmd, "out" ) || span_eq( cmd, "meta" ) )
@@ -247,6 +250,9 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
                 load_rules( s->nodes, s->globals, s->queue, s->srcdir_fd, n, s->loc );
                 location_pop( s->loc );
             }
+
+        var_free( files );
+        free( files );
     }
 
     s->stanza_started = true;
@@ -301,16 +307,17 @@ void rl_for( struct rl_state *s, value_t *cmds, fileline_t pos )
         snprintf( location, 1024, "while evaluating for loop with %.*s = %s",
                   span_len( name ), name.str, val->data );
         location_push_current( s->loc, location );
-        rl_stanza_clear( s, false );
+        rl_stanza_clear( s );
         env_dup( &s->locals, &saved );
         var_t *ivar = env_set( s->loc, &s->locals, name );
         var_add( s->loc, ivar, span_lit( val->data ) );
         rl_replay( s, cmds, pos );
-        rl_stanza_end( s, false );
+        rl_stanza_end( s );
         val = val->next;
         location_pop( s->loc );
     }
 
+    env_clear( &saved, true );
     var_free( iter );
     free( iter );
 }
@@ -378,7 +385,7 @@ void load_rules( cb_tree *nodes, cb_tree *env, queue_t *q, int srcdir_fd, node_t
         sys_error( s.loc, "opening %s %s", node->type == out_node ? "output" : "source", node->name );
 
     location_push_reader( s.loc, &s.reader );
-    rl_stanza_clear( &s, true );
+    rl_stanza_clear( &s );
 
     while ( read_line( &s.reader ) )
     {
@@ -386,11 +393,13 @@ void load_rules( cb_tree *nodes, cb_tree *env, queue_t *q, int srcdir_fd, node_t
             continue;
 
         if ( span_empty( s.reader.span ) )
-            rl_stanza_end( &s, true );
+            rl_stanza_end( &s );
         else
             rl_statement( &s );
     }
 
-    rl_stanza_end( &s, true );
+    rl_stanza_end( &s );
+    env_clear( &s.locals, true );
+    env_clear( &s.templates, true );
     location_pop( s.loc );
 }

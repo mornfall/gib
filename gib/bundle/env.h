@@ -29,15 +29,6 @@ var_t *env_get( cb_tree *env, span_t name )
         return 0;
 }
 
-void var_clear( location_t *loc, var_t *var )
-{
-    cb_clear( &var->set, true );
-    var->list = 0;
-
-    if ( var->frozen )
-        error( loc, "cannot reset frozen variable %s", var->name );
-}
-
 var_t *var_alloc( span_t name )
 {
     var_t *var = calloc( 1, SIZE_NAMED( var_t, span_len( name ) ) );
@@ -50,8 +41,19 @@ void var_free( var_t *var )
     if ( !var )
         return;
 
+    cb_clear( &var->set, false );
+
     for ( value_t *v = var->list, *next = 0; v; v = next )
         next = v->next, free( v );
+}
+
+void var_clear( location_t *loc, var_t *var )
+{
+    if ( var->frozen )
+        error( loc, "cannot reset frozen variable %s", var->name );
+
+    var_free( var );
+    var->list = NULL;
 }
 
 void env_clear( cb_tree *env, bool release )
@@ -142,8 +144,13 @@ void env_dup( cb_tree *out, cb_tree *env )
 {
     for ( cb_iterator i = cb_begin( env ); !cb_end( &i ); cb_next( &i ) )
     {
-        var_t *var = cb_get( &i ); /* TODO copy the values */
-        cb_insert( out, var, offsetof( var_t, name ), -1 );
+        var_t *old = cb_get( &i ); /* TODO copy the values */
+        var_t *new = env_set( NULL, out, span_lit( old->name ) );
+
+        for ( value_t *v = old->list; v; v = v->next )
+            var_add( NULL, new, span_lit( v->data ) );
+
+        cb_insert( out, new, offsetof( var_t, name ), -1 );
     }
 }
 
@@ -273,7 +280,10 @@ void env_expand_match( env_expand_t s, var_t *var, span_t spec, span_t prefix, s
             bool replace = !span_empty( replacement );
 
             if ( strncmp( val->data, pat_prefix.str, span_len( pat_prefix ) ) )
+            {
+                cb_iterator_free( &i );
                 break;
+            }
 
             if ( !span_empty( pat_suffix ) && !span_match( pattern, val_str, s.capture ) )
                 continue;

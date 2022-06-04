@@ -139,14 +139,16 @@ void cb_next( cb_iterator *i )
         cb_iter_dive( i, span_lit( "" ) );
 }
 
+void cb_iterator_free( cb_iterator *i )
+{
+    free( i->stack );
+    i->stack = NULL;
+}
+
 bool cb_end( cb_iterator *i )
 {
     if ( i->depth == -1 )
-    {
-        free( i->stack );
-        i->stack = NULL;
-        return true;
-    }
+        return cb_iterator_free( i ), true;
     else
         return false;
 }
@@ -268,10 +270,17 @@ void cb_free( cb_node *n )
 
 void cb_clear( cb_tree *t, bool release )
 {
+    bool free_root = t->vsize == CB_VSIZE_INTERNAL;
+
     if ( release )
         for ( cb_iterator i = cb_begin( t ); !cb_end( &i ); cb_next( &i ) )
             free( cb_get( &i ) );
-    if ( t->vsize == CB_VSIZE_INTERNAL )
+
+    if ( free_root )
+    {
         cb_free( t->root );
+        free( t->root );
+    }
+
     cb_init( t );
 }

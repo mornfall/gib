@@ -174,5 +174,12 @@ bool job_update( job_t *j, cb_tree *nodes, const char *srcdir )
             j->warned = true;
     }
 
-    return j->reader->fd < 0;
+    if ( j->reader->fd < 0 )
+    {
+        free( j->reader );
+        j->reader = 0;
+        return true;
+    }
+
+    return false;
 }
