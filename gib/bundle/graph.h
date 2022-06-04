@@ -124,6 +124,18 @@ void graph_add_dep( cb_tree *t, node_t *n, span_t name, bool dyn )
     cb_insert( &n->deps, dep, offsetof( node_t, name ), span_len( name ) );
 }
 
+void graph_free( node_t *node )
+{
+    cb_clear( &node->deps, false );
+    cb_clear( &node->deps_dyn, false );
+    cb_clear( &node->blocking, false );
+
+    for ( value_t *v = node->cmd, *next; v; v = next )
+        next = v->next, free( v );
+
+    node->cmd = NULL;
+}
+
 void graph_dump( FILE *out, cb_tree *t )
 {
     for ( cb_iterator i = cb_begin( t ); !cb_end( &i ); cb_next( &i ) )

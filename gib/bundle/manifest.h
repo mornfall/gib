@@ -75,6 +75,8 @@ void load_manifest( cb_tree *nodes, var_t *src, var_t *dirs,
         node->type = src_node;
     }
 
+    span_free( dir );
+
     if ( close( dirfd ) )
         sys_error( NULL, "closing fd %d", dirfd );
 }

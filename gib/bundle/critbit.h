@@ -94,6 +94,7 @@ cb_iterator cb_begin_at( cb_tree *t, span_t where )
     cb_iterator i;
     cb_node *n = t->root;
     i.depth = -1;
+    i.stack = NULL;
 
     if ( !n )
         return i;
@@ -140,7 +141,14 @@ void cb_next( cb_iterator *i )
 
 bool cb_end( cb_iterator *i )
 {
-    return i->depth == -1;
+    if ( i->depth == -1 )
+    {
+        free( i->stack );
+        i->stack = NULL;
+        return true;
+    }
+    else
+        return false;
 }
 
 cb_result cb_find( cb_tree *t, span_t k )
@@ -248,8 +256,22 @@ bool cb_insert( cb_tree *t, void *leaf, uint16_t vsize, int len )
     return false; /* not inserted */
 }
 
-void cb_clear( cb_tree *t )
+void cb_free( cb_node *n )
 {
-    /* TODO */
+    for ( int ch = 0; ch <= 1; ++ch )
+        if ( n && n->vsize[ ch ] == CB_VSIZE_INTERNAL )
+        {
+            cb_free( n->child[ ch ] );
+            free( n->child[ ch ] );
+        }
+}
+
+void cb_clear( cb_tree *t, bool release )
+{
+    if ( release )
+        for ( cb_iterator i = cb_begin( t ); !cb_end( &i ); cb_next( &i ) )
+            free( cb_get( &i ) );
+    if ( t->vsize == CB_VSIZE_INTERNAL )
+        cb_free( t->root );
     cb_init( t );
 }

@@ -44,6 +44,13 @@ void location_pop( location_t *s )
     free( del );
 }
 
+void location_free( location_t *s )
+{
+    while ( s->stack )
+        location_pop( s );
+    cb_clear( &s->names, true );
+}
+
 void location_push_fixed( struct location *s, fileline_t pos, const char *what )
 {
     struct location_stack *new = malloc( sizeof( struct location_stack ) );
@@ -90,5 +97,6 @@ void location_set( struct location *s, span_t name )
     assert( top );
     *pos = top->reader->pos;
     span_copy( pos->name, name );
-    cb_insert( &s->names, pos, offsetof( fileline_t, name ), span_len( name ) );
+    if ( !cb_insert( &s->names, pos, offsetof( fileline_t, name ), span_len( name ) ) )
+        free( pos );
 }

@@ -48,17 +48,18 @@ int rl_dirfd( struct rl_state *s, node_t *node )
     return node->type == out_node ? s->queue->outdir_fd : s->srcdir_fd;
 }
 
-void rl_stanza_clear( struct rl_state *s )
+void rl_stanza_clear( struct rl_state *s, bool release )
 {
     s->out_set = false;
     s->cmd_set = false;
     s->meta_set = false;
     s->stanza_started = false;
-    cb_clear( &s->locals );
+
+    env_clear( &s->locals, release );
     env_set( s->loc, &s->locals, span_lit( "dep" ) );
 }
 
-void rl_stanza_end( struct rl_state *s )
+void rl_stanza_end( struct rl_state *s, bool release )
 {
     if ( s->out_set || s->meta_set )
     {
@@ -76,10 +77,12 @@ void rl_stanza_end( struct rl_state *s )
 
         if ( s->cmd_set )
         {
-            node->cmd = env_get( &s->locals, span_lit( "cmd" ) )->list;
+            var_t *cmd_var = env_get( &s->locals, span_lit( "cmd" ) );
+            node->cmd = cmd_var->list;
+            cmd_var->list = NULL;
+            cb_clear( &cmd_var->set, false );
             span_t argv_0 = span_lit( node->cmd->data );
             graph_add_dep( s->nodes, node, argv_0, false );
-            /* TODO take ownership! rl_stanza_clear will destroy the variable */
         }
 
         value_t *dep = env_get( &s->locals, span_lit( "dep" ) )->list;
@@ -92,7 +95,7 @@ void rl_stanza_end( struct rl_state *s )
         }
     }
 
-    rl_stanza_clear( s );
+    rl_stanza_clear( s, release );
 }
 
 void rl_replay( struct rl_state *s, value_t *cmds, fileline_t pos );
@@ -298,17 +301,18 @@ void rl_for( struct rl_state *s, value_t *cmds, fileline_t pos )
         snprintf( location, 1024, "while evaluating for loop with %.*s = %s",
                   span_len( name ), name.str, val->data );
         location_push_current( s->loc, location );
-        rl_stanza_clear( s );
+        rl_stanza_clear( s, false );
         env_dup( &s->locals, &saved );
         var_t *ivar = env_set( s->loc, &s->locals, name );
         var_add( s->loc, ivar, span_lit( val->data ) );
         rl_replay( s, cmds, pos );
-        rl_stanza_end( s );
+        rl_stanza_end( s, false );
         val = val->next;
         location_pop( s->loc );
     }
 
     var_free( iter );
+    free( iter );
 }
 
 void rl_statement( struct rl_state *s )
@@ -349,6 +353,7 @@ void rl_statement( struct rl_state *s )
         cmds = 0;
 
     var_free( cmds );
+    free( cmds );
     span_free( name );
     span_free( args );
 }
@@ -373,7 +378,7 @@ void load_rules( cb_tree *nodes, cb_tree *env, queue_t *q, int srcdir_fd, node_t
         sys_error( s.loc, "opening %s %s", node->type == out_node ? "output" : "source", node->name );
 
     location_push_reader( s.loc, &s.reader );
-    rl_stanza_clear( &s );
+    rl_stanza_clear( &s, true );
 
     while ( read_line( &s.reader ) )
     {
@@ -381,11 +386,11 @@ void load_rules( cb_tree *nodes, cb_tree *env, queue_t *q, int srcdir_fd, node_t
             continue;
 
         if ( span_empty( s.reader.span ) )
-            rl_stanza_end( &s );
+            rl_stanza_end( &s, true );
         else
             rl_statement( &s );
     }
 
-    rl_stanza_end( &s );
+    rl_stanza_end( &s, true );
     location_pop( s.loc );
 }

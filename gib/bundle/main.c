@@ -73,6 +73,17 @@ void state_init( state_t *s )
     ct->frozen = true;
 }
 
+void state_free( state_t *s )
+{
+    for ( cb_iterator i = cb_begin( &s->nodes ); !cb_end( &i ); cb_next( &i ) )
+        graph_free( cb_get( &i ) );
+
+    free( s->srcdir );
+    env_clear( &s->env, true );
+    cb_clear( &s->nodes, true );
+    location_free( &s->loc );
+}
+
 void state_load( state_t *s )
 {
     var_t *jobs_var, *outdir_var;
@@ -247,7 +258,7 @@ void update_goals( state_t *s, selector_t *sel )
         }
 
         if ( s->goals.root != s->nodes.root )
-            cb_clear( &s->goals );
+            cb_clear( &s->goals, false );
     }
 
     s->goals = target;
@@ -288,8 +299,6 @@ int main( int argc, char *argv[] )
         queue_monitor( &s.queue, true );
     }
 
-    state_save( &s );
-
     if ( s.queue.job_failed )
     {
         job_t *j = s.queue.job_failed;
@@ -300,6 +309,9 @@ int main( int argc, char *argv[] )
             fprintf( stderr, " (followed by %d others)", s.queue.failed_count - 1 );
         fprintf( stderr, "\n" );
     }
+
+    state_save( &s );
+    state_free( &s );
 
     return s.queue.failed_count > 0;
 }

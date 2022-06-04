@@ -31,8 +31,7 @@ var_t *env_get( cb_tree *env, span_t name )
 
 void var_clear( location_t *loc, var_t *var )
 {
-    /* TODO */
-    cb_clear( &var->set );
+    cb_clear( &var->set, true );
     var->list = 0;
 
     if ( var->frozen )
@@ -53,8 +52,15 @@ void var_free( var_t *var )
 
     for ( value_t *v = var->list, *next = 0; v; v = next )
         next = v->next, free( v );
+}
 
-    free( var );
+void env_clear( cb_tree *env, bool release )
+{
+    if ( release )
+        for ( cb_iterator i = cb_begin( env ); !cb_end( &i ); cb_next( &i ) )
+            var_free( cb_get( &i ) );
+
+    cb_clear( env, release );
 }
 
 var_t *env_set( location_t *loc, cb_tree *env, span_t name )
@@ -277,6 +283,7 @@ void env_expand_match( env_expand_t s, var_t *var, span_t spec, span_t prefix, s
     }
 
     var_free( pattern_var );
+    free( pattern_var );
     return;
 }
 

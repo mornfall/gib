@@ -162,7 +162,7 @@ bool queue_start_next( queue_t *q )
     job_t *j = q->job_next;
     q->job_next = j->next;
 
-    cb_clear( &j->node->deps_dyn );
+    cb_clear( &j->node->deps_dyn, false );
     job_fork( j, q->outdir_fd, q->logdir_fd );
 
     q->running_count ++;
@@ -207,7 +207,7 @@ void queue_cleanup_node( queue_t *q, node_t *n )
         }
     }
 
-    cb_clear( &n->blocking );
+    cb_clear( &n->blocking, false );
 }
 
 void queue_cleanup_job( queue_t *q, int fd )
