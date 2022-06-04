@@ -1,5 +1,6 @@
 #include "common.h"
 #include "writer.h"
+#include "error.h"
 #include <sys/stat.h>
 #include <dirent.h>
 
@@ -28,7 +29,7 @@ void dump( state_t s )
     writer_append( s.dep, span_lit( "\n" ) );
 
     if ( !list )
-        sys_error( "fdopendir on %.*s failed", span_len( s.path ), s.path.str );
+        sys_error( NULL, "fdopendir on %.*s failed", span_len( s.path ), s.path.str );
 
     while ( ( dirp = readdir( list ) ) )
     {
@@ -46,7 +47,7 @@ void dump( state_t s )
             struct stat st;
 
             if ( fstatat( s.dirfd, dirp->d_name, &st, 0 ) )
-                sys_error( "fstatat %s", dirp->d_name );
+                sys_error( NULL, "fstatat %s", dirp->d_name );
 
             if ( S_ISREG( st.st_mode ) ) dirp->d_type = DT_REG;
             if ( S_ISDIR( st.st_mode ) ) dirp->d_type = DT_DIR;
@@ -89,7 +90,7 @@ void dump( state_t s )
         sub.dirfd  = openat( s.dirfd, todo->dt.d_name, O_DIRECTORY | O_RDONLY );
 
         if ( sub.dirfd < 0 )
-            sys_error( "opening directory %s", todo->dt.d_name );
+            sys_error( NULL, "opening directory %s", todo->dt.d_name );
 
         dump( sub );
 
@@ -118,7 +119,7 @@ int main( int argc, const char *argv[] )
     };
 
     if ( s.dirfd < 0 )
-        sys_error( "opening directory %s", argv[ 1 ] );
+        sys_error( NULL, "opening directory %s", argv[ 1 ] );
 
     writer_open( &out, AT_FDCWD, argv[ 2 ] );
     dep.file = dep.tmp = NULL;
