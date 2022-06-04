@@ -132,7 +132,9 @@ void queue_show_result( queue_t *q, node_t *n, job_t *j )
     }
 
     q->todo_count --;
-    fprintf( stderr, "\033[J\033[%dm%s\033[0m %s\n", color, status, n->name );
+
+    if ( !_signalled )
+        fprintf( stderr, "\033[J\033[%dm%s\033[0m %s\n", color, status, n->name );
 }
 
 void queue_add( queue_t *q, job_t *j )
@@ -228,7 +230,7 @@ void queue_cleanup_job( queue_t *q, int fd )
         if ( j->changed )
             n->stamp_changed = n->stamp_want;
     }
-    else
+    else if ( !_signalled )
         n->failed = true;
 
     q->running_count --;
