@@ -3,7 +3,8 @@ set cflags -g
 set ldflags
 set all
 
-sub gib/bundle/boot.gib
+sub? gib/local
+sub  gib/bundle/boot.gib
 
 out make directories
 dep gib/bundle/manifest.txt
