@@ -10,7 +10,7 @@ dep gib/bundle/manifest.txt
 cmd /bin/mkdir -p gib/bundle bin
 
 for src $(gibsrc:*.c)
-out $(src!stem).o
+out $(src:*.c:$1).o
 dep make directories
 cmd gib.wrapcc $(cc) -c $(cflags) -o $(out) $(srcdir)/$(src)
 
