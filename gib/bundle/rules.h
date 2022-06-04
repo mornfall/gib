@@ -55,7 +55,7 @@ void rl_stanza_clear( struct rl_state *s )
     s->meta_set = false;
     s->stanza_started = false;
     cb_clear( &s->locals );
-    env_set( &s->locals, span_lit( "dep" ) );
+    env_set( s->loc, &s->locals, span_lit( "dep" ) );
 }
 
 void rl_stanza_end( struct rl_state *s )
@@ -115,12 +115,12 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
     if ( span_eq( cmd, "cmd" ) )
     {
         s->cmd_set = true;
-        var_t *cmd = env_set( &s->locals, span_lit( "cmd" ) );
+        var_t *cmd = env_set( s->loc, &s->locals, span_lit( "cmd" ) );
 
         while ( !span_empty( args ) )
         {
             span_t word = fetch_word( &args );
-            env_expand( cmd, &s->locals, s->globals, word );
+            env_expand( s->loc, cmd, &s->locals, s->globals, word );
         }
 
         if ( !cmd->list )
@@ -132,11 +132,11 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
         span_t src_name = fetch_word( &args );
         span_t dir_name = fetch_word( &args );
 
-        var_t *src = env_get( s->globals, src_name ) ?: env_set( s->globals, src_name );
-        var_t *dir = env_get( s->globals, dir_name ) ?: env_set( s->globals, dir_name );
+        var_t *src = env_get( s->globals, src_name ) ?: env_set( s->loc, s->globals, src_name );
+        var_t *dir = env_get( s->globals, dir_name ) ?: env_set( s->loc, s->globals, dir_name );
 
         var_t *path = var_alloc( span_lit( "manifest-path" ) );
-        env_expand( path, &s->locals, s->globals, args );
+        env_expand( s->loc, path, &s->locals, s->globals, args );
 
         for ( value_t *val = path->list; val; val = val->next )
         {
@@ -149,8 +149,8 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
     else if ( span_eq( cmd, "out" ) || span_eq( cmd, "meta" ) )
     {
         if ( span_eq( cmd, "out" ) ) s->out_set = true; else s->meta_set = true;
-        var_t *out = env_set( &s->locals, span_lit( "out" ) );
-        env_expand( out, &s->locals, s->globals, args );
+        var_t *out = env_set( s->loc, &s->locals, span_lit( "out" ) );
+        env_expand( s->loc, out, &s->locals, s->globals, args );
         if ( !out->list || out->list->next )
             error( s->loc, "out must expand into exactly one item" );
     }
@@ -159,7 +159,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
     {
         span_t name = dep ? span_lit( "dep" ) : fetch_word( &args );
         bool autovivify = true;
-        var_t *var = env_resolve( &s->locals, s->globals, name, &autovivify );
+        var_t *var = env_resolve( s->loc, &s->locals, s->globals, name, &autovivify );
 
         if ( !var )
             error( s->loc, "cannot add to a non-existent variable %.*s", span_len( name ), name.str );
@@ -170,10 +170,10 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
             while ( !span_empty( args ) )
             {
                 span_t word = fetch_word( &args );
-                env_expand( var, &s->locals, s->globals, word );
+                env_expand( s->loc, var, &s->locals, s->globals, word );
             }
         else
-            env_expand( var, &s->locals, s->globals, args );
+            env_expand( s->loc, var, &s->locals, s->globals, args );
 
         if ( !new )
             new = var->list;
@@ -202,7 +202,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
         if ( env_get( &s->templates, name ) )
             error( s->loc, "name '%.*s' is already used for a template", span_len( name ), name.str );
 
-        var_t *var = env_set( set ? s->globals : &s->locals, name );
+        var_t *var = env_set( s->loc, set ? s->globals : &s->locals, name );
 
         if ( set )
             location_set( s->loc, name );
@@ -211,10 +211,10 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
             while ( !span_empty( args ) )
             {
                 span_t word = fetch_word( &args );
-                env_expand( var, &s->locals, s->globals, word );
+                env_expand( s->loc, var, &s->locals, s->globals, word );
             }
         else
-            env_expand( var, &s->locals, s->globals, args );
+            env_expand( s->loc, var, &s->locals, s->globals, args );
     }
 
     else if ( span_eq( cmd, "use" ) )
@@ -233,7 +233,7 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
     else if ( sub )
     {
         var_t *files = var_alloc( span_lit( "sub-files" ) );
-        env_expand( files, &s->locals, s->globals, args );
+        env_expand( s->loc, files, &s->locals, s->globals, args );
 
         for ( value_t *val = files->list; val; val = val->next )
             if ( !ignore_missing || access( val->data, R_OK ) != -1 )
@@ -286,7 +286,7 @@ void rl_for( struct rl_state *s, value_t *cmds, fileline_t pos )
     while ( !span_empty( line ) )
     {
         span_t word = fetch_word( &line );
-        env_expand( iter, &s->locals, s->globals, word );
+        env_expand( s->loc, iter, &s->locals, s->globals, word );
     }
 
     value_t *val = iter->list;
@@ -300,8 +300,8 @@ void rl_for( struct rl_state *s, value_t *cmds, fileline_t pos )
         location_push_current( s->loc, location );
         rl_stanza_clear( s );
         env_dup( &s->locals, &saved );
-        var_t *ivar = env_set( &s->locals, name );
-        var_add( ivar, span_lit( val->data ) );
+        var_t *ivar = env_set( s->loc, &s->locals, name );
+        var_add( s->loc, ivar, span_lit( val->data ) );
         rl_replay( s, cmds, pos );
         rl_stanza_end( s );
         val = val->next;
@@ -334,14 +334,14 @@ void rl_statement( struct rl_state *s )
     if ( is_def )
         location_set( s->loc, name );
 
-    var_t *cmds = is_def ? env_set( &s->templates, name )
+    var_t *cmds = is_def ? env_set( s->loc, &s->templates, name )
                          : var_alloc( span_lit( "for-body" ) );
 
     if ( is_for )
-        var_add( cmds, line );
+        var_add( s->loc, cmds, line );
 
     while ( read_line( &s->reader ) && !span_empty( s->reader.span ) )
-        var_add( cmds, s->reader.span );
+        var_add( s->loc, cmds, s->reader.span );
 
     if ( is_for )
         rl_for( s, cmds->list, s->reader.pos );

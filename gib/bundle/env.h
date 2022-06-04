@@ -29,14 +29,14 @@ var_t *env_get( cb_tree *env, span_t name )
         return 0;
 }
 
-void var_clear( var_t *var )
+void var_clear( location_t *loc, var_t *var )
 {
     /* TODO */
     cb_clear( &var->set );
     var->list = 0;
 
     if ( var->frozen )
-        error( NULL, "cannot reset frozen variable %s", var->name );
+        error( loc, "cannot reset frozen variable %s", var->name );
 }
 
 var_t *var_alloc( span_t name )
@@ -57,12 +57,12 @@ void var_free( var_t *var )
     free( var );
 }
 
-var_t *env_set( cb_tree *env, span_t name )
+var_t *env_set( location_t *loc, cb_tree *env, span_t name )
 {
     var_t *var = env_get( env, name );
 
     if ( var )
-        var_clear( var );
+        var_clear( loc, var );
     else
     {
         var = var_alloc( name );
@@ -72,10 +72,10 @@ var_t *env_set( cb_tree *env, span_t name )
     return var;
 }
 
-void var_add_value( var_t *var, value_t *val )
+void var_add_value( location_t *loc, var_t *var, value_t *val )
 {
     if ( var->frozen )
-        error( NULL, "cannot change frozen variable %s", var->name );
+        error( loc, "cannot change frozen variable %s", var->name );
 
     val->next = 0;
     cb_insert( &var->set, val, offsetof( value_t, data ), -1 );
@@ -89,22 +89,22 @@ void var_add_value( var_t *var, value_t *val )
         var->list = var->last = val;
 }
 
-void var_add( var_t *var, span_t str )
+void var_add( location_t *loc, var_t *var, span_t str )
 {
     value_t *val = malloc( offsetof( value_t, data ) + span_len( str ) + 1 );
     span_copy( val->data, str );
-    var_add_value( var, val );
+    var_add_value( loc, var, val );
 }
 
 void var_reset( var_t *var, span_t str )
 {
-    var_clear( var );
-    var_add( var, str );
+    var_clear( NULL, var );
+    var_add( NULL, var, str );
 }
 
 void env_reset( cb_tree *env, span_t name, span_t str )
 {
-    var_add( env_set( env, name ), str );
+    var_add( NULL, env_set( NULL, env, name ), str );
 }
 
 uint64_t var_hash( value_t *head )
@@ -125,11 +125,11 @@ uint64_t var_hash( value_t *head )
     return result.hash;
 }
 
-void env_add( cb_tree *env, span_t name, span_t val )
+void env_add( location_t *loc, cb_tree *env, span_t name, span_t val )
 {
     var_t *var = env_get( env, name );
     assert( var );
-    var_add( var, val );
+    var_add( loc, var, val );
 }
 
 void env_dup( cb_tree *out, cb_tree *env )
@@ -162,17 +162,17 @@ span_t span_base( span_t s )
     return span_mk( *dirsep == '/' ? dirsep + 1 : dirsep, s.end );
 }
 
-span_t env_expand_singleton( cb_tree *local, cb_tree *global, span_t str )
+span_t env_expand_singleton( location_t *loc, cb_tree *local, cb_tree *global, span_t str )
 {
     var_t *var = env_get( local, str ) ?: env_get( global, str );
 
     if ( !var || !var->list || var->list->next )
-        error( NULL, "expansion '%.*s is not a singleton", span_len( str ), str.str );
+        error( loc, "expansion '%.*s is not a singleton", span_len( str ), str.str );
 
     return span_lit( var->list->data );
 }
 
-var_t *env_resolve( cb_tree *local, cb_tree *global, span_t spec, bool *autovivify )
+var_t *env_resolve( location_t *loc, cb_tree *local, cb_tree *global, span_t spec, bool *autovivify )
 {
     span_t sub = spec;
     span_t base = fetch_until( &sub, ".", 0 );
@@ -181,7 +181,7 @@ var_t *env_resolve( cb_tree *local, cb_tree *global, span_t spec, bool *autovivi
     if ( !span_empty( base ) && sub.str[ 0 ] == '$' )
     {
         sub.str ++;
-        span_t sub_value = env_expand_singleton( local, global, sub );
+        span_t sub_value = env_expand_singleton( loc, local, global, sub );
 
         char buffer[ span_len( base ) + span_len( sub_value ) + 2 ], *ptr = buffer;
         ptr = span_copy( ptr, base );
@@ -194,7 +194,7 @@ var_t *env_resolve( cb_tree *local, cb_tree *global, span_t spec, bool *autovivi
         var_t *var = env_get( use_env, ref );
         *autovivify = true;
 
-        return var ?: make ? env_set( use_env, ref ) : NULL;
+        return var ?: make ? env_set( loc, use_env, ref ) : NULL;
     }
 
     cb_tree *envs[ 3 ] = { local, global, NULL };
@@ -204,7 +204,7 @@ var_t *env_resolve( cb_tree *local, cb_tree *global, span_t spec, bool *autovivi
         {
             *autovivify = true;
             var_t *var = env_get( *env, spec );
-            return var ?: make ? env_set( *env, spec ) : NULL;
+            return var ?: make ? env_set( loc, *env, spec ) : NULL;
         }
 
     *autovivify = false;
@@ -213,6 +213,7 @@ var_t *env_resolve( cb_tree *local, cb_tree *global, span_t spec, bool *autovivi
 
 typedef struct env_expand
 {
+    location_t *loc;
     var_t *var;
     cb_tree *local, *global;
     span_t capture[ 9 ];
@@ -221,9 +222,10 @@ typedef struct env_expand
 void env_expand_item( env_expand_t s, span_t prefix, span_t value, span_t suffix, bool replace );
 void env_expand_list( env_expand_t s, span_t str, const char *ref );
 
-void env_expand( var_t *var, cb_tree *local, cb_tree *global, span_t str )
+void env_expand( location_t *loc, var_t *var, cb_tree *local, cb_tree *global, span_t str )
 {
     env_expand_t s;
+    s.loc = loc;
     s.var = var;
     s.local = local;
     s.global = global;
@@ -270,7 +272,7 @@ void env_expand_match( env_expand_t s, var_t *var, span_t spec, span_t prefix, s
     span_t replacement  = spec;
     span_t pattern_str  = fetch_until( &replacement, ":", '\\' );
     var_t *pattern_var  = var_alloc( span_lit( "temporary" ) );
-    env_expand( pattern_var, s.local, s.global, pattern_str );
+    env_expand( s.loc, pattern_var, s.local, s.global, pattern_str );
     /* TODO: quote * and % that came in from expansion */
 
     for ( value_t *pat_item = pattern_var->list; pat_item; pat_item = pat_item->next )
@@ -308,16 +310,16 @@ void env_expand_list( env_expand_t s, span_t str, const char *ref )
         ++ ref;
 
     if ( ref < str.end && ref + 2 >= str.end )
-        error( NULL, "unexpected $ at the end of string" );
+        error( s.loc, "unexpected $ at the end of string" );
 
     if ( ref == str.end )
-        return var_add( s.var, str );
+        return var_add( s.loc, s.var, str );
 
     const char *ref_end = ref + 1;
     int counter = 0;
 
     if ( *ref_end != '(' )
-        error( NULL, "expected ( after $ in %.*s", span_len( str ), str );
+        error( s.loc, "expected ( after $ in %.*s", span_len( str ), str );
 
     while ( ref_end < str.end )
     {
@@ -342,12 +344,12 @@ void env_expand_list( env_expand_t s, span_t str, const char *ref )
     ref_name.end = ref_spec.str = ref_ptr;
 
     bool vivify = false;
-    var_t *ref_var = env_resolve( s.local, s.global, ref_name, &vivify );
+    var_t *ref_var = env_resolve( s.loc, s.local, s.global, ref_name, &vivify );
 
     if ( !ref_var && vivify )
         return;
     if ( !ref_var )
-        error( NULL, "invalid variable reference in %.*s", span_len( str ), str );
+        error( s.loc, "invalid variable reference %.*s", span_len( str ), str );
 
     ref_var->frozen = true;
 

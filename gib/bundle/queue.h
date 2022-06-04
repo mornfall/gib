@@ -52,8 +52,8 @@ void queue_set_outdir( queue_t *q, cb_tree *env )
 
     if ( !var )
     {
-        var = env_set( env, span_lit( "outdir" ) );
-        var_add( var, span_lit( "_build" ) );
+        var = env_set( NULL, env, span_lit( "outdir" ) );
+        var_add( NULL, var, span_lit( "_build" ) );
     }
 
     var->frozen = true;

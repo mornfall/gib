@@ -34,7 +34,7 @@ void load_manifest( cb_tree *nodes, var_t *src, var_t *dirs,
             dir = span_dup( path );
             if ( ( dirfd = open( dir.str, O_DIRECTORY | O_RDONLY ) ) == -1 )
                 sys_error( NULL, "%s:%d: opening %s", r.pos.file, r.pos.line, dir );
-            var_add( dirs, dir );
+            var_add( NULL, dirs, dir );
         }
 
         int slash = !is_dir && span_len( dir ) ? 1 : 0;
@@ -53,7 +53,7 @@ void load_manifest( cb_tree *nodes, var_t *src, var_t *dirs,
         {
             file = node->name + span_len( dir ) + slash;
             span_copy( file, path );
-            var_add( src, name );
+            var_add( NULL, src, name );
         }
 
         struct stat st;
