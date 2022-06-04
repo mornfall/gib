@@ -6,6 +6,7 @@ f findsrc.c
 f nochange.c
 f reader.h
 f common.h
+f error.h
 f critbit.h
 f env.h
 f graph.h

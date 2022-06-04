@@ -11,9 +11,13 @@ use gibutil
 dep gib/bundle/reader.h
 dep gib/bundle/writer.h
 dep gib/bundle/common.h
+dep gib/bundle/error.h
 
 let name nochange
 use gibutil
 
 let name findsrc
 use gibutil
+dep gib/bundle/writer.h
+dep gib/bundle/common.h
+dep gib/bundle/error.h
