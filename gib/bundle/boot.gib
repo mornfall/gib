@@ -4,7 +4,7 @@ def gibutil
 out gib.$(name)
 let src gib/bundle/$(name).c
 dep $(src)
-cmd $(cc) $(cflags) -o $(out) $(srcdir)/$(src)
+cmd $(cc) $(cflags) -O2 -o $(out) $(srcdir)/$(src)
 
 let name wrapcc
 use gibutil
