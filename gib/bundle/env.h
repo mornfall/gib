@@ -141,27 +141,6 @@ void env_dup( cb_tree *out, cb_tree *env )
     }
 }
 
-span_t span_stem( span_t s )
-{
-    const char *end = s.end;
-
-    while ( end > s.str && *--end != '/' )
-        if ( *end == '.' )
-        {
-            s.end = end;
-            break;
-        }
-
-    return s;
-}
-
-span_t span_base( span_t s )
-{
-    const char *dirsep = s.end;
-    while ( dirsep > s.str && *--dirsep != '/' );
-    return span_mk( *dirsep == '/' ? dirsep + 1 : dirsep, s.end );
-}
-
 span_t env_expand_singleton( location_t *loc, cb_tree *local, cb_tree *global, span_t str )
 {
     var_t *var = env_get( local, str ) ?: env_get( global, str );
