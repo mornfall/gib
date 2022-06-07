@@ -1,10 +1,23 @@
-src  gibsrc gibdir gib/bundle/manifest.txt
+# load the static manifest, setting $(gibsrc) to the list of source files and
+# $(gibdir) to the list of source directories; in a bigger project (and one
+# that isn't trying to bootstrap its own build tools), the manifest would be
+# likely generated on the fly
+
+src gibsrc gibdir gib/bundle/manifest.txt
+
+# a macro for building and linking the bundled helper programs; ‹name› is
+# essentially a named parameter of the macro (it is set as a local variable
+# before the macro ‹use› statement)
 
 def gibutil
 out gib.$(name)
 let src gib/bundle/$(name).c
 dep $(src)
-cmd $(cc) $(cflags) -O2 -o $(out) $(srcdir)/$(src)
+cmd $(cc) $(cflags) -o $(out) $(srcdir)/$(src)
+
+# build the individual helpers using the above macro and a static list of
+# dependencies (again, mainly for bootstrap reasons – the standard way to get
+# ‹#include› dependencies is to use ‹gib.wrapcc› which we are building here
 
 let name wrapcc
 use gibutil
