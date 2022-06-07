@@ -1,21 +1,44 @@
+# configuration variables (create ‹gib/local› to change them without modifying
+# this file)
+
 set prefix  /usr/local
 set cc      /usr/bin/cc
 set cflags  -g -O2
 set ldflags
+
+# virtual targets (what to build for ‹gib all› and ‹gib install›) – they are
+# populated below as the respective nodes are declared (using ‹add all $(out)›
+# and ‹add install $(out)› statements)
+
 set all
 set install
+
+# include user configuration and bundled helper programs; the source manifest
+# (static, in this case) is loaded by ‹boot.gib› – go check it out
 
 sub? gib/local
 sub  gib/bundle/boot.gib
 
+# create «build» directories to mirror the source structure (a bigger project
+# would use the directory list from the manifest here)
+
 out make directories
-dep gib/bundle/manifest.txt
-cmd /bin/mkdir -p gib/bundle bin
+cmd gib.nochange /bin/mkdir -p gib/bundle bin
+
+# compile source (.c) files into object (.o) files, using a ‹for› loop… even
+# though the construct looks ‘imperative’ what it creates are nodes of the
+# «build graph» – it does not run the commands; instead, ‹gib› will materialize
+# the nodes by running the command as required to fulfill dependencies (or when
+# the nodes are mentioned on the command line)
 
 for src $(gibsrc:*.c)
 out $(src:*.c:$1).o
 dep make directories
 cmd gib.wrapcc $(cc) -c $(cflags) -o $(out) $(srcdir)/$(src)
+
+# link the main ‹gib› binary; it goes under ‹bin› because we can't have both
+# the directory ‹gib› and the binary ‹gib› right in the build root… the ‹out›
+# variable is set (locally) as a side-effect of the ‹out› statement
 
 out bin/gib
 add all $(out)
@@ -24,10 +47,16 @@ dep $(obj)
 dep $(gibdir)
 cmd $(cc) $(cflags) -o $(out) $(obj)
 
+# a target for installing the main binary; we add the node's output to the
+# ‹install› variable/list which means it will be ‘built’ when the user runs
+# ‹gib install›
+
 out $(prefix)/bin/gib
 dep bin/gib
 cmd /usr/bin/install -D bin/gib $(out)
 add install $(out)
+
+# same for the helper programs
 
 for f gib.findsrc gib.wrapcc gib.nochange
 out $(prefix)/bin/$(f)
