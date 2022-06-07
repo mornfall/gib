@@ -35,6 +35,7 @@ typedef struct
 
     char *srcdir;
     FILE *debug;
+    bool want_debug;
 
     cb_tree env;
     cb_tree nodes;
@@ -48,6 +49,7 @@ void state_init( state_t *s )
 {
     s->srcdir = getcwd( 0, 0 );
     s->show_var = NULL;
+    s->want_debug = false;
 
     location_init( &s->loc );
     cb_init( &s->env );
@@ -108,13 +110,18 @@ void state_load( state_t *s )
     if ( ( jobs_var = env_get( &s->env, span_lit( "jobs" ) ) ) && jobs_var->list )
         s->queue.running_max = atoi( jobs_var->list->data );
 
-    int debug_fd = openat( s->queue.outdir_fd, "gib.debug",
-                           O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0666 );
+    if ( s->want_debug )
+    {
+        int debug_fd = openat( s->queue.outdir_fd, "gib.debug",
+                               O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0666 );
 
-    if ( debug_fd < 0 )
-        sys_error( NULL, "opening gib.debug for writing" );
-    else
-        s->debug = fdopen( debug_fd, "w" );
+        fprintf( stderr, "will dump the build graph into gib.debug\n" );
+
+        if ( debug_fd < 0 )
+            sys_error( NULL, "opening gib.debug for writing" );
+        else
+            s->debug = fdopen( debug_fd, "w" );
+    }
 }
 
 void state_save( state_t *s )
@@ -174,6 +181,9 @@ bool process_option( state_t *s, int ch, const char *arg )
         case 'c':
             env_reset( &s->env, span_lit( "config" ), span_lit( arg ) );
             return true;
+        case 'd':
+            s->want_debug = true;
+            break;
         case 'V':
             s->show_var = arg;
             return true;
@@ -186,7 +196,7 @@ void parse_options( state_t *s, int argc, char *argv[] )
 {
     int ch;
 
-    while ( ( ch = getopt( argc, argv, "c:V:" ) ) != -1 )
+    while ( ( ch = getopt( argc, argv, "c:V:d" ) ) != -1 )
         if ( !process_option( s, ch, optarg ) )
             usage(), error( NULL, "unknown option -%c", ch );
 
@@ -297,11 +307,11 @@ int main( int argc, char *argv[] )
         for ( value_t *val = show->list; val != NULL; val = val->next )
             puts( val->data );
 
-    if ( !s.show_var )
-    {
+    if ( s.want_debug )
         graph_dump( s.debug, &s.nodes );
+
+    if ( !s.show_var )
         queue_monitor( &s.queue, true );
-    }
 
     if ( s.queue.job_failed )
     {
