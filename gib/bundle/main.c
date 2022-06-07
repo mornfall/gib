@@ -310,6 +310,8 @@ int main( int argc, char *argv[] )
     if ( s.want_debug )
         graph_dump( s.debug, &s.nodes );
 
+    env_clear( &s.env, true );
+
     if ( !s.show_var )
         queue_monitor( &s.queue, true );
 
