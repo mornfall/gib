@@ -7,13 +7,6 @@ typedef enum node_type { src_node, out_node, sys_node, meta_node } node_type;
 
 typedef struct node
 {
-    node_type type:3;
-    bool visited:1;
-    bool failed:1;
-    bool dirty:1;
-    bool frozen:1;
-    int waiting;
-
     /* Stamps govern what needs to be built:
      *
      *  • updated – when was the node was last rebuilt (or updated by the
@@ -35,6 +28,13 @@ typedef struct node
 
     uint64_t cmd_hash;
     value_t *cmd;
+
+    node_type type:3;
+    bool visited:1;
+    bool failed:1;
+    bool dirty:1;
+    bool frozen:1;
+    int waiting:24;
 
     char name[];
 } node_t;
