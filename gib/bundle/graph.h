@@ -120,8 +120,8 @@ void graph_add_dep( cb_tree *t, node_t *n, span_t name, bool dyn )
 
     if ( dyn )
         cb_insert( &n->deps_dyn, dep, offsetof( node_t, name ), span_len( name ) );
-
-    cb_insert( &n->deps, dep, offsetof( node_t, name ), span_len( name ) );
+    else
+        cb_insert( &n->deps, dep, offsetof( node_t, name ), span_len( name ) );
 }
 
 void graph_free( node_t *node )
@@ -151,6 +151,12 @@ void graph_dump( FILE *out, cb_tree *t )
         {
             node_t *d = cb_get( &j );
             fprintf( out, "dep: %s\n", d->name );
+        }
+
+        for ( cb_iterator j = cb_begin( &n->deps_dyn ); !cb_end( &j ); cb_next( &j ) )
+        {
+            node_t *d = cb_get( &j );
+            fprintf( out, "dyn: %s\n", d->name );
         }
 
         if ( n->cmd )

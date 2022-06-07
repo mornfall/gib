@@ -318,8 +318,26 @@ bool queue_loop( queue_t *q )
     return !_signalled && ( q->running_count || q->job_next );
 }
 
-void queue_create_jobs( queue_t *q, node_t *goal )
+void queue_update_blocking( node_t *goal, node_t *out, node_t *dep )
 {
+    node_t *dep_out = dep->type == out_node ? dep : 0;
+
+    if ( dep_out && !dep_out->failed )
+        if ( dep_out->stamp_want > dep_out->stamp_updated || dep_out->dirty )
+        {
+            cb_insert( &dep->blocking, goal, offsetof( node_t, name ), -1 );
+            goal->waiting ++;
+        }
+
+    if ( dep->stamp_changed > out->stamp_updated )
+        out->dirty = true;
+}
+
+void queue_create_jobs( queue_t *q, node_t *goal, node_t *requested_by )
+{
+    if ( requested_by && requested_by->stamp_want < goal->stamp_want )
+        requested_by->stamp_want = goal->stamp_want;
+
     if ( goal->visited )
         return;
 
@@ -327,13 +345,9 @@ void queue_create_jobs( queue_t *q, node_t *goal )
     node_t *out = goal->type == out_node ? goal : 0;
 
     for ( cb_iterator i = cb_begin( &goal->deps ); !cb_end( &i ); cb_next( &i ) )
-    {
-        node_t *dep = cb_get( &i );
-        queue_create_jobs( q, dep );
-
-        if ( out && out->stamp_want < dep->stamp_want )
-            out->stamp_want = dep->stamp_want;
-    }
+        queue_create_jobs( q, cb_get( &i ), out );
+    for ( cb_iterator i = cb_begin( &goal->deps_dyn ); !cb_end( &i ); cb_next( &i ) )
+        queue_create_jobs( q, cb_get( &i ), out );
 
     if ( !out )
         return;
@@ -349,20 +363,9 @@ void queue_create_jobs( queue_t *q, node_t *goal )
     if ( out->stamp_want > out->stamp_updated || out->dirty )
     {
         for ( cb_iterator i = cb_begin( &goal->deps ); !cb_end( &i ); cb_next( &i ) )
-        {
-            node_t *dep = cb_get( &i );
-            node_t *dep_out = dep->type == out_node ? dep : 0;
-
-            if ( dep_out && !dep_out->failed )
-                if ( dep_out->stamp_want > dep_out->stamp_updated || dep_out->dirty )
-                {
-                    cb_insert( &dep->blocking, goal, offsetof( node_t, name ), -1 );
-                    goal->waiting ++;
-                }
-
-            if ( dep->stamp_changed > out->stamp_updated )
-                out->dirty = true;
-        }
+            queue_update_blocking( goal, out, cb_get( &i ) );
+        for ( cb_iterator i = cb_begin( &goal->deps_dyn ); !cb_end( &i ); cb_next( &i ) )
+            queue_update_blocking( goal, out, cb_get( &i ) );
     }
 
     if ( out->waiting || out->dirty )
@@ -377,7 +380,7 @@ void queue_add_goal( queue_t *q, const char *name )
     node_t *goal = graph_get( q->nodes, span_lit( name ) );
 
     if ( goal )
-        queue_create_jobs( q, goal );
+        queue_create_jobs( q, goal, NULL );
     else
         error( NULL, "goal %s not defined", name );
 }

@@ -288,7 +288,7 @@ int main( int argc, char *argv[] )
         }
 
     for ( cb_iterator i = cb_begin( &s.goals ); !cb_end( &i ); cb_next( &i ) )
-        queue_create_jobs( &s.queue, cb_get( &i ) );
+        queue_create_jobs( &s.queue, cb_get( &i ), NULL );
 
     for ( cb_iterator i = cb_begin( &s.nodes ); !cb_end( &i ); cb_next( &i ) )
         queue_cleanup_node( &s.queue, cb_get( &i ) );
