@@ -20,7 +20,12 @@ sub? gib/local
 sub  gib/bundle/boot.gib
 
 # create «build» directories to mirror the source structure (a bigger project
-# would use the directory list from the manifest here)
+# would use the directory list from the manifest here)… since nodes depend on
+# the exact command used to build them, changing the list of directories here
+# will cause them to be remade; since it is wrapped in ‹gib.nochange›, the
+# change in the list of directories to create will «not» cause downstream
+# rebuilds (i.e. ‹main.o› will not be rebuilt, even though it has a static
+# dependency on ‹make directories›)
 
 out make directories
 cmd gib.nochange /bin/mkdir -p gib/bundle bin
