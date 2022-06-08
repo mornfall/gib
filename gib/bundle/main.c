@@ -183,7 +183,7 @@ bool process_option( state_t *s, int ch, const char *arg )
             return true;
         case 'd':
             s->want_debug = true;
-            break;
+            return true;
         case 'V':
             s->show_var = arg;
             return true;
