@@ -8,13 +8,13 @@
 
  • it has a simple but powerful language for describing build graphs,
  • uses timestamps on source files to figure out what needs to be done,
- • no builtin support for particular programming languages¹,
+ • no builtin support for particular programming languages.¹
 
 Of course, it comes with some improvements over ‹make› (what would be the
 point otherwise):
 
  • the language is simpler and more regular,
- • variables are true lists (not space-separated strings),
+ • variables are true lists (not with significant whitespace),
  • outputs depend on the exact commands used to build them,
  • support for dynamic dependencies,
  • first-rate support for script-generated rules,
@@ -23,7 +23,16 @@ point otherwise):
 And some divergence in design choices:
 
  • build directories are always separate from sources,
- • …
+ • no evaluation-time command execution (like ‹!=› in ‹make›),
+ • build commands:
+   ◦ are «not» passed to ‹sh› but ‹exec›'d as lists,
+   ◦ run without access to the terminal,
+   ◦ all outputs are logged by default, one log file per command,
+   ◦ are not looked up in ‹PATH› (use absolute paths or ‹/usr/bin/env›).
+
+The remainder of this document describes ‹gib› and its build description
+language in more detail. If you want to see a quick and simple example before
+diving in, check out ‹gib/bundle/boot.gib›.
 
 ¹ Unlike ‹make›, there are also no built-in rules for compiling C programs.
   The scope of macros is currently limited to a single file, but if/when that
@@ -47,15 +56,15 @@ and OpenBSD make (hopefully also representative of other BSD variants).
 
 # project structure
 
-For simple builds, you can simply have a toplevel ‹gibfile› which contains all
-the rules. In more complicated projects, you will generally want to split the
+For simple builds, you can create a toplevel ‹gibfile› which contains all the
+rules. In more complicated projects, you will generally want to split the
 rules up and there will likely be additional build-related files. The
 recommended practice is to put them under ‹gib›, with the toplevel rule file
 being ‹gib/main›.
 
 It is a good idea to conditionally include ‹gib/local› after setting your
 configuration variables, so that users can conveniently override your
-defaults.
+defaults, without tripping up version control.
 
 # rule syntax
 
