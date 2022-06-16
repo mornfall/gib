@@ -20,20 +20,22 @@ void location_print_trace( struct location_stack *s )
 
 void location_vprint( struct location *s, const char *reason, va_list ap )
 {
-    if ( !s )
+    if ( s )
+    {
+        struct location_stack *bt = s->stack;
+        location_print_trace( bt );
+        vfprintf( stderr, reason, ap );
+        fprintf( stderr, "\n" );
+
+        for ( bt = bt->next; bt; bt = bt->next )
+            if ( bt->what )
+                location_print_trace( bt );
+    }
+    else
     {
         vfprintf( stderr, reason, ap );
         fprintf( stderr, "\n" );
     }
-
-    struct location_stack *bt = s->stack;
-    location_print_trace( bt );
-    vfprintf( stderr, reason, ap );
-    fprintf( stderr, "\n" );
-
-    for ( bt = bt->next; bt; bt = bt->next )
-        if ( bt->what )
-            location_print_trace( bt );
 }
 
 void location_pop( location_t *s )
