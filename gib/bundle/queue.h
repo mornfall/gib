@@ -333,11 +333,8 @@ void queue_update_blocking( node_t *goal, node_t *out, node_t *dep )
 
 void queue_create_jobs( queue_t *q, node_t *goal, node_t *requested_by )
 {
-    if ( requested_by && requested_by->stamp_want < goal->stamp_want )
-        requested_by->stamp_want = goal->stamp_want;
-
     if ( goal->visited )
-        return;
+        goto end;
 
     goal->visited = true;
     node_t *out = goal->type == out_node ? goal : 0;
@@ -348,7 +345,7 @@ void queue_create_jobs( queue_t *q, node_t *goal, node_t *requested_by )
         queue_create_jobs( q, cb_get( &i ), out );
 
     if ( !out )
-        return;
+        goto end;
 
     if ( var_hash( out->cmd ) != out->cmd_hash )
     {
@@ -371,6 +368,10 @@ void queue_create_jobs( queue_t *q, node_t *goal, node_t *requested_by )
 
     if ( !out->waiting && out->dirty ) /* can run right away */
         queue_add( q, job_add( &q->jobs, out ) );
+
+end:
+    if ( requested_by && requested_by->stamp_want < goal->stamp_want )
+        requested_by->stamp_want = goal->stamp_want;
 }
 
 void queue_add_goal( queue_t *q, const char *name )
