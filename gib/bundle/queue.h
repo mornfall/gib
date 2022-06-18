@@ -324,10 +324,8 @@ void queue_update_blocking( node_t *goal, node_t *out, node_t *dep )
 
     if ( dep_out && !dep_out->failed )
         if ( dep_out->stamp_want > dep_out->stamp_updated || dep_out->dirty )
-        {
-            cb_insert( &dep->blocking, goal, offsetof( node_t, name ), -1 );
-            goal->waiting ++;
-        }
+            if ( cb_insert( &dep->blocking, goal, offsetof( node_t, name ), -1 ) )
+                goal->waiting ++;
 
     if ( dep->stamp_changed > out->stamp_updated )
         out->dirty = true;
