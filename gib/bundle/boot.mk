@@ -32,8 +32,8 @@ makefile: ;
 # openbsd make does not like prerequisites on .DEFAULT
 .BEGIN: .gib.bin
 .DEFAULT:
-	@./.gib.bin $@
+	@./.gib.bin "$@"
 
 # gnumake would be okay with dep on .DEFAULT but does not know .BEGIN
 %: .gib.bin
-	@./.gib.bin $@
+	@./.gib.bin "$@"
