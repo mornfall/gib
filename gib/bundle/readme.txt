@@ -120,6 +120,7 @@ an undefined variable is an error. Variable references take these forms:
     ◦ if ‹*› or ‹%› are present, they both match an arbitrary substring
       (including an empty one), and the pattern is anchored at «both ends» (so
       that ‹$(var:src/*.cpp)› does what you imagine it should),
+  • ‹$(var!pattern)›: same as above, but negated (remove matching items)
   • ‹$(var:pattern:replacement)›: filter like above, but replace the items
     from ‹var› with ‹replacement›, provided that:
     ◦ ‹$n› for ‹n› being a single digit is substituted for the string matched

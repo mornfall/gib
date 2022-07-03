@@ -299,6 +299,27 @@ void env_expand_match( env_expand_t s, var_t *var, span_t spec, span_t prefix, s
     return;
 }
 
+void env_expand_match_neg( env_expand_t s, var_t *var, span_t spec, span_t prefix, span_t suffix )
+{
+    var_t *pattern_var = var_alloc( span_lit( "temporary" ) );
+    env_expand( s.loc, pattern_var, s.local, s.global, spec );
+    /* TODO: quote * and % that came in from expansion */
+
+    if ( pattern_var->list->next )
+        error( s.loc, "negative matches on multiple patterns are not allowed" );
+
+    span_t pattern = span_lit( pattern_var->list->data );
+
+    for ( cb_iterator i = cb_begin( &var->set ); !cb_end( &i ); cb_next( &i ) )
+    {
+        value_t *val = cb_get( &i );
+        span_t val_str = span_lit( val->data );
+
+        if ( !span_match( pattern, val_str, s.capture ) )
+            env_expand_item( s, prefix, val_str, suffix, false );
+    }
+}
+
 void env_expand_list( env_expand_t s, span_t str, const char *ref )
 {
     if ( !ref )
@@ -338,7 +359,7 @@ void env_expand_list( env_expand_t s, span_t str, const char *ref )
 
     const char *ref_ptr = ref_name.str;
 
-    for ( ; ref_ptr < ref_name.end && !strchr( ":~", *ref_ptr ); ++ ref_ptr );
+    for ( ; ref_ptr < ref_name.end && !strchr( ":~!", *ref_ptr ); ++ ref_ptr );
     ref_name.end = ref_spec.str = ref_ptr;
 
     bool vivify = false;
@@ -356,6 +377,8 @@ void env_expand_list( env_expand_t s, span_t str, const char *ref )
 
     if ( ref_type == ':' )
         return env_expand_match( s, ref_var, ref_spec, prefix, suffix );
+    if ( ref_type == '!' )
+        return env_expand_match_neg( s, ref_var, ref_spec, prefix, suffix );
     if ( ref_type == '~' )
         assert( false ); /* not implemented */
 
