@@ -154,16 +154,6 @@ void env_dup( cb_tree *out, cb_tree *env )
     }
 }
 
-span_t env_expand_singleton( location_t *loc, cb_tree *local, cb_tree *global, span_t str )
-{
-    var_t *var = env_get( local, str ) ?: env_get( global, str );
-
-    if ( !var || !var->list || var->list->next )
-        error( loc, "expansion '%.*s is not a singleton", span_len( str ), str.str );
-
-    return span_lit( var->list->data );
-}
-
 var_t *env_resolve( location_t *loc, cb_tree *local, cb_tree *global, span_t spec, bool *autovivify )
 {
     span_t sub = spec;
@@ -173,7 +163,19 @@ var_t *env_resolve( location_t *loc, cb_tree *local, cb_tree *global, span_t spe
     if ( !span_empty( base ) && sub.str[ 0 ] == '$' )
     {
         sub.str ++;
-        span_t sub_value = env_expand_singleton( loc, local, global, sub );
+
+        var_t *sub_var = env_get( local, sub ) ?: env_get( global, sub );
+
+        if ( !sub_var )
+            error( loc, "variable '%.*s not defined", span_len( sub ), sub.str );
+        if ( !sub_var->list )
+            return *autovivify = true, NULL;
+        if ( sub_var->list->next )
+            error( loc, "cannot expand non-singleton %.*s in %.*s",
+                   span_len( sub ), sub.str,
+                   span_len( spec ), spec.str );
+
+        span_t sub_value = span_lit( sub_var->list->data );
 
         char buffer[ span_len( base ) + span_len( sub_value ) + 2 ], *ptr = buffer;
         ptr = span_copy( ptr, base );
