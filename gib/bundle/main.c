@@ -73,6 +73,7 @@ void state_init( state_t *s )
     node_t *ct = graph_add( &s->nodes, span_lit( "current time" ) );
     graph_set_stamps( ct, time( NULL ) );
     ct->frozen = true;
+    ct->type = sys_node;
 }
 
 void state_free( state_t *s )
