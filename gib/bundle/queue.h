@@ -165,6 +165,9 @@ bool queue_start_next( queue_t *q )
     job_t *j = q->job_next;
     q->job_next = j->next;
 
+    if ( !q->job_next )
+        q->job_last = NULL;
+
     cb_clear( &j->node->deps_dyn, false );
     job_fork( j, q->outdir_fd, q->logdir_fd );
 
