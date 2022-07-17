@@ -367,6 +367,15 @@ void queue_add_goal( queue_t *q, const char *name )
         error( NULL, "goal %s not defined", name );
 }
 
+void queue_goals( queue_t *q, cb_tree *goals, cb_tree *nodes )
+{
+    for ( cb_iterator i = cb_begin( goals ); !cb_end( &i ); cb_next( &i ) )
+        queue_create_jobs( q, cb_get( &i ), NULL );
+
+    for ( cb_iterator i = cb_begin( nodes ); !cb_end( &i ); cb_next( &i ) )
+        queue_cleanup_node( q, cb_get( &i ) );
+}
+
 void queue_init( queue_t *q, cb_tree *nodes, const char *srcdir )
 {
     q->outdir_fd = -1;

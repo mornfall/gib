@@ -298,11 +298,7 @@ int main( int argc, char *argv[] )
             update_goals( &s, sel );
         }
 
-    for ( cb_iterator i = cb_begin( &s.goals ); !cb_end( &i ); cb_next( &i ) )
-        queue_create_jobs( &s.queue, cb_get( &i ), NULL );
-
-    for ( cb_iterator i = cb_begin( &s.nodes ); !cb_end( &i ); cb_next( &i ) )
-        queue_cleanup_node( &s.queue, cb_get( &i ) );
+    queue_goals( &s.queue, &s.goals, &s.nodes );
 
     if ( s.show_var && ( show = env_get( &s.env, span_lit( s.show_var ) ) ) )
         for ( value_t *val = show->list; val != NULL; val = val->next )
