@@ -30,7 +30,8 @@ typedef struct node
     value_t *cmd;
 
     node_type type:3;
-    bool visited:1;
+    bool visited:1; /* create jobs, restat */
+    bool changed:1; /* restat */
     bool failed:1;
     bool dirty:1;
     bool frozen:1;
@@ -51,6 +52,9 @@ node_t *graph_get( cb_tree *t, span_t name )
 
 void graph_set_stamps( node_t *n, int64_t value )
 {
+    if ( n->stamp_updated != value )
+        n->changed = true;
+
     n->stamp_want = n->stamp_changed = n->stamp_updated = value;
 }
 

@@ -376,6 +376,40 @@ void queue_goals( queue_t *q, cb_tree *goals, cb_tree *nodes )
         queue_cleanup_node( q, cb_get( &i ) );
 }
 
+bool queue_restat( queue_t *q, cb_tree *nodes, int *count )
+{
+    bool changed = false;
+
+    for ( cb_iterator i = cb_begin( nodes ); !cb_end( &i ); cb_next( &i ) )
+    {
+        node_t *n = cb_get( &i );
+
+        if ( !n->visited )
+        {
+            n->visited = true;
+            n->changed = false;
+            assert( n->waiting == 0 );
+
+            if ( n->type == src_node )
+            {
+                if ( ( *count ) ++ % 2000 == 0 ) /* rate limit */
+                    usleep( 500000 );
+
+                if ( !graph_do_stat( n ) )
+                    sys_error( NULL, "stat failed on %s", n->name );
+            }
+
+            if ( n->type == out_node )
+                if ( queue_restat( q, &n->deps, count ) | queue_restat( q, &n->deps_dyn, count ) )
+                    n->changed = true, n->failed = false;
+        }
+
+        changed = changed || n->changed;
+    }
+
+    return changed;
+}
+
 void queue_init( queue_t *q, cb_tree *nodes, const char *srcdir )
 {
     q->outdir_fd = -1;
