@@ -41,6 +41,7 @@ typedef struct
     job_t *job_failed;
     job_t *running[ MAX_FD ];
 
+    bool pause_output;
     int skipped_count;
     int failed_count;
     int ok_count;
@@ -101,7 +102,7 @@ void queue_set_outdir( queue_t *q, cb_tree *env )
     closedir( fdir );
 }
 
-void queue_show_result( queue_t *q, node_t *n, job_t *j, bool log_only )
+void queue_show_result( queue_t *q, node_t *n, job_t *j, int verbosity )
 {
     const char *status = "??";
     int color = 0;
@@ -113,10 +114,10 @@ void queue_show_result( queue_t *q, node_t *n, job_t *j, bool log_only )
     else if ( j && j->warned ) status = "ok", color = 33, q->ok_count ++;
     else                       status = "ok", color = 32, q->ok_count ++;
 
-    if ( q->job_failed && q->job_failed != j )
+    if ( _signalled )
         return;
 
-    if ( log_only || !_signalled && n->failed || changed && j && j->warned )
+    if ( ( verbosity >= 2 || !q->pause_output ) && ( n->failed || changed && j && j->warned ) )
     {
         fprintf( stderr, "\033[J" );
         char filename[ strlen( n->name ) + 5 ], *p = filename;
@@ -138,7 +139,7 @@ void queue_show_result( queue_t *q, node_t *n, job_t *j, bool log_only )
         close( log.fd );
     }
 
-    if ( !_signalled && !log_only )
+    if ( verbosity >= 1 || !q->pause_output )
         fprintf( stderr, "\033[J\033[%dm%s\033[0m %s\n", color, status, n->name );
 }
 
@@ -246,7 +247,7 @@ void queue_cleanup_job( queue_t *q, int fd )
     j->queued = false;
     q->running_count --;
     q->todo_count --;
-    queue_show_result( q, n, j, false );
+    queue_show_result( q, n, j, 0 );
     queue_cleanup_node( q, j->node );
 }
 
