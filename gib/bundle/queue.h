@@ -177,30 +177,26 @@ bool queue_start_next( queue_t *q )
     return true;
 }
 
-void queue_skip( queue_t *q, node_t *n )
-{
-    if ( n->failed )
-        return;
-
-    queue_show_result( q, n, NULL, false );
-    n->failed = true;
-
-    for ( cb_iterator i = cb_begin( &n->blocking ); !cb_end( &i ); cb_next( &i ) )
-        queue_skip( q, cb_get( &i ) );
-}
-
 void queue_cleanup_node( queue_t *q, node_t *n )
 {
-    if ( n->type != out_node && n->type != meta_node || n->dirty || n->waiting )
+    if ( n->type != out_node && n->type != meta_node || n->dirty && !n->failed || n->waiting )
         return;
 
     for ( cb_iterator i = cb_begin( &n->blocking ); !cb_end( &i ); cb_next( &i ) )
     {
         node_t *b = cb_get( &i );
+        assert( b->waiting > 0 );
+        assert( b != n );
+
+        if ( n->stamp_changed > b->stamp_updated )
+            b->dirty = true;
+
+        if ( n->failed )
+            b->failed = true;
 
         if ( ! -- b->waiting )
         {
-            if ( b->dirty )
+            if ( b->dirty && b->stamp_updated < b->stamp_want && !b->failed )
                 queue_add( q, job_add( &q->jobs, b ) );
             else
             {
@@ -241,25 +237,7 @@ void queue_cleanup_job( queue_t *q, int fd )
 
     q->running_count --;
     queue_show_result( q, n, j, false );
-
-    for ( cb_iterator i = cb_begin( &j->node->blocking ); !cb_end( &i ); cb_next( &i ) )
-    {
-        node_t *b = cb_get( &i );
-
-        if ( n->stamp_changed > b->stamp_updated )
-            b->dirty = true;
-
-        if ( n->failed && !b->failed )
-            queue_skip( q, b );
-
-        if ( -- b->waiting )
-            continue;
-
-        if ( b->dirty && b->stamp_updated < b->stamp_want && !b->failed )
-            queue_add( q, job_add( &q->jobs, b ) );
-        else
-            queue_cleanup_node( q, b );
-    }
+    queue_cleanup_node( q, j->node );
 }
 
 void queue_teardown( queue_t *q )
