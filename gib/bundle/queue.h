@@ -51,6 +51,16 @@ typedef struct
     int running_max;
 } queue_t;
 
+void queue_set_failed( queue_t *q, node_t *n, bool failed )
+{
+    if ( n->failed && !failed )
+        q->failed_count --;
+    if ( !n->failed && failed )
+        q->failed_count ++;
+
+    n->failed = failed;
+}
+
 void queue_set_outdir( queue_t *q, cb_tree *env )
 {
     var_t *var = env_get( env, span_lit( "outdir" ) );
@@ -109,7 +119,7 @@ void queue_show_result( queue_t *q, node_t *n, job_t *j, int verbosity )
     bool changed = n->stamp_changed == n->stamp_want;
     bool updated = n->stamp_updated == n->stamp_want;
 
-    if      ( n->failed )      status = "no", color = 31, q->failed_count ++;
+    if      ( n->failed )      status = "no", color = 31;
     else if ( !changed )       status = "--", color = 33, q->skipped_count ++;
     else if ( j && j->warned ) status = "ok", color = 33, q->ok_count ++;
     else                       status = "ok", color = 32, q->ok_count ++;
@@ -200,7 +210,7 @@ void queue_cleanup_node( queue_t *q, node_t *n )
             b->dirty = true;
 
         if ( n->failed )
-            b->failed = true;
+            queue_set_failed( q, b, true );
 
         if ( ! -- b->waiting )
         {
@@ -238,7 +248,7 @@ void queue_cleanup_job( queue_t *q, int fd )
     }
     else if ( !_signalled )
     {
-        n->failed = true;
+        queue_set_failed( q, n, true );
         j->next = q->job_failed;
         q->job_failed = j;
     }
@@ -358,8 +368,13 @@ void queue_create_jobs( queue_t *q, node_t *goal, node_t *requested_by )
         queue_add( q, job_add( &q->jobs, out ) );
 
 end:
-    if ( requested_by && requested_by->stamp_want < goal->stamp_want )
-        requested_by->stamp_want = goal->stamp_want;
+    if ( requested_by )
+    {
+        if ( requested_by->stamp_want < goal->stamp_want )
+            requested_by->stamp_want = goal->stamp_want;
+        if ( goal->failed )
+            queue_set_failed( q, requested_by, true );
+    }
 }
 
 void queue_add_goal( queue_t *q, const char *name )
@@ -400,8 +415,11 @@ bool queue_restat( queue_t *q, cb_tree *nodes )
                     sys_error( NULL, "stat failed on %s", n->name );
 
             if ( n->type == out_node )
-                if ( queue_restat( q, &n->deps, count ) | queue_restat( q, &n->deps_dyn, count ) )
-                    n->changed = true, n->failed = false;
+                if ( queue_restat( q, &n->deps ) | queue_restat( q, &n->deps_dyn ) )
+                {
+                    n->changed = true;
+                    queue_set_failed( q, n, false );
+                }
         }
 
         changed = changed || n->changed;
