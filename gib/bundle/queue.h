@@ -247,15 +247,19 @@ void queue_cleanup_job( queue_t *q, int fd )
             n->stamp_changed = n->stamp_want;
     }
     else if ( !_signalled )
-    {
         queue_set_failed( q, n, true );
+
+    queue_show_result( q, n, j, 0 );
+
+    if ( n->failed )
+    {
+        q->pause_output = true;
         j->next = q->job_failed;
         q->job_failed = j;
     }
 
     j->queued = false;
     q->running_count --;
-    queue_show_result( q, n, j, 0 );
     queue_cleanup_node( q, j->node );
 }
 
@@ -445,6 +449,7 @@ void queue_init( queue_t *q, cb_tree *nodes, const char *srcdir )
     q->queued_count = 0;
     q->waiting_count = 0;
     q->running_max = 4;
+    q->pause_output = false;
 
     q->job_next = NULL;
     q->job_last = NULL;
