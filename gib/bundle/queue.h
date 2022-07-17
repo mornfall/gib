@@ -109,6 +109,9 @@ void queue_show_result( queue_t *q, node_t *n, job_t *j, bool log_only )
     else if ( j && j->warned ) status = "ok", color = 33, q->ok_count ++;
     else                       status = "ok", color = 32, q->ok_count ++;
 
+    if ( q->job_failed && q->job_failed != j )
+        return;
+
     if ( log_only || !_signalled && n->failed || changed && j && j->warned )
     {
         fprintf( stderr, "\033[J" );
