@@ -424,6 +424,6 @@ void queue_monitor( queue_t *q, bool endmsg )
     elapsed = time( NULL ) - q->started;
 
     if ( endmsg )
-        fprintf( stderr, "build finished: %d ok, %d failed, %d skipped, %lld:%02lld elapsed\n",
+        fprintf( stderr, "\033[J\rbuild finished: %d ok, %d failed, %d skipped, %lld:%02lld elapsed\n",
                  q->ok_count, q->failed_count, q->skipped_count, elapsed / 60, elapsed % 60 );
 }
