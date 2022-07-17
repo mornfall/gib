@@ -76,6 +76,8 @@ void state_init( state_t *s )
     graph_set_stamps( ct, time( NULL ) );
     ct->frozen = true;
     ct->type = sys_node;
+
+    queue_init( &s->queue, &s->nodes, s->srcdir );
 }
 
 void state_free( state_t *s )
@@ -105,7 +107,6 @@ void state_load( state_t *s )
     if ( faccessat( srcdir_fd, "gibfile", R_OK, 0 ) == 0 )
         main = "gibfile";
 
-    queue_init( &s->queue, &s->nodes, s->srcdir );
     load_rules( &s->nodes, &s->env, &s->queue, srcdir_fd,
                 graph_find_file( &s->nodes, span_lit( main ) ), &s->loc );
     queue_set_outdir( &s->queue, &s->env );
