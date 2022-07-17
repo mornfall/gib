@@ -368,7 +368,7 @@ void queue_create_jobs( queue_t *q, node_t *goal, node_t *requested_by )
             queue_update_blocking( q, goal, out, cb_get( &i ) );
     }
 
-    if ( !out->waiting && out->dirty ) /* can run right away */
+    if ( !out->waiting && out->dirty && !out->failed ) /* can run right away */
         queue_add( q, job_add( &q->jobs, out ) );
 
 end:
