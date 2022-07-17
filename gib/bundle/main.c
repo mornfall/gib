@@ -354,17 +354,6 @@ int main( int argc, char *argv[] )
         }
     }
 
-    if ( s.queue.job_failed )
-    {
-        job_t *j = s.queue.job_failed;
-        queue_show_result( &s.queue, j->node, j, true );
-
-        fprintf( stderr, "\033[J\033[%dmfailed\033[0m: %s", 31, j->node->name );
-        if ( s.queue.failed_count > 1 )
-            fprintf( stderr, " (followed by %d others)", s.queue.failed_count - 1 );
-        fprintf( stderr, "\n" );
-    }
-
     state_save( &s );
     state_free( &s );
 

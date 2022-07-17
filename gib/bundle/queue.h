@@ -462,6 +462,7 @@ void queue_init( queue_t *q, cb_tree *nodes, const char *srcdir )
 void queue_monitor( queue_t *q, bool endmsg )
 {
     time_t elapsed = 0;
+    int fail_count = 0;
 
     signal( SIGHUP, sighandler );
     signal( SIGINT, sighandler );
@@ -482,6 +483,14 @@ void queue_monitor( queue_t *q, bool endmsg )
     elapsed = time( NULL ) - q->started;
 
     if ( endmsg )
+    {
+        for ( job_t *j = q->job_failed; j; j = j->next )
+            if ( fail_count || j->next || !q->pause_output )
+                queue_show_result( q, j->node, j, ++fail_count > 10 && !j->next ? 2 : 1 );
+
         fprintf( stderr, "\033[J\rbuild finished: %d ok, %d failed, %d skipped, %lld:%02lld elapsed\n",
                  q->ok_count, q->failed_count, q->skipped_count, elapsed / 60, elapsed % 60 );
+
+        q->pause_output = false;
+    }
 }
