@@ -45,7 +45,7 @@ typedef struct
     int skipped_count;
     int failed_count;
     int ok_count;
-    int todo_count;
+    int waiting_count;
     int queued_count;
     int running_count;
     int running_max;
@@ -204,13 +204,12 @@ void queue_cleanup_node( queue_t *q, node_t *n )
 
         if ( ! -- b->waiting )
         {
+            q->waiting_count --;
+
             if ( b->dirty && b->stamp_updated < b->stamp_want && !b->failed )
                 queue_add( q, job_add( &q->jobs, b ) );
             else
-            {
                 queue_cleanup_node( q, b );
-                q->todo_count --;
-            }
         }
     }
 
@@ -246,7 +245,6 @@ void queue_cleanup_job( queue_t *q, int fd )
 
     j->queued = false;
     q->running_count --;
-    q->todo_count --;
     queue_show_result( q, n, j, 0 );
     queue_cleanup_node( q, j->node );
 }
@@ -310,14 +308,15 @@ bool queue_loop( queue_t *q )
     return !_signalled && ( q->running_count || q->job_next );
 }
 
-void queue_update_blocking( node_t *goal, node_t *out, node_t *dep )
+void queue_update_blocking( queue_t *q, node_t *goal, node_t *out, node_t *dep )
 {
     node_t *dep_out = dep->type == out_node ? dep : 0;
 
     if ( dep_out && !dep_out->failed )
         if ( dep_out->stamp_want > dep_out->stamp_updated || dep_out->dirty )
             if ( cb_insert( &dep->blocking, goal, offsetof( node_t, name ), -1 ) )
-                goal->waiting ++;
+                if ( !goal->waiting ++ )
+                    ++ q->waiting_count;
 
     if ( dep->stamp_changed > out->stamp_updated )
         out->dirty = true;
@@ -350,13 +349,10 @@ void queue_create_jobs( queue_t *q, node_t *goal, node_t *requested_by )
     if ( out->stamp_want > out->stamp_updated || out->dirty )
     {
         for ( cb_iterator i = cb_begin( &goal->deps ); !cb_end( &i ); cb_next( &i ) )
-            queue_update_blocking( goal, out, cb_get( &i ) );
+            queue_update_blocking( q, goal, out, cb_get( &i ) );
         for ( cb_iterator i = cb_begin( &goal->deps_dyn ); !cb_end( &i ); cb_next( &i ) )
-            queue_update_blocking( goal, out, cb_get( &i ) );
+            queue_update_blocking( q, goal, out, cb_get( &i ) );
     }
-
-    if ( out->waiting || out->dirty )
-        ++ q->todo_count;
 
     if ( !out->waiting && out->dirty ) /* can run right away */
         queue_add( q, job_add( &q->jobs, out ) );
@@ -429,7 +425,7 @@ void queue_init( queue_t *q, cb_tree *nodes, const char *srcdir )
     q->ok_count = 0;
     q->running_count = 0;
     q->queued_count = 0;
-    q->todo_count = 0;
+    q->waiting_count = 0;
     q->running_max = 4;
 
     q->job_next = NULL;
@@ -456,7 +452,7 @@ void queue_monitor( queue_t *q, bool endmsg )
     {
         elapsed = time( NULL ) - q->started;
         fprintf( stderr, "%d/%d running + %d/%d queued | %d ok + %d failed | %lld:%02lld elapsed\r",
-                 q->running_count, q->running_max, q->queued_count, q->todo_count - q->running_count,
+                 q->running_count, q->running_max, q->queued_count, q->queued_count + q->waiting_count,
                  q->ok_count, q->failed_count, elapsed / 60, elapsed % 60 );
     }
 
