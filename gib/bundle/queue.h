@@ -143,7 +143,9 @@ void queue_add( queue_t *q, job_t *j )
     assert( !j->queued );
     assert( j->node->dirty );
 
+    j->changed = true;
     j->queued = true;
+    j->next = NULL;
     ++ q->queued_count;
 
     if ( !q->job_next )
@@ -233,6 +235,7 @@ void queue_cleanup_job( queue_t *q, int fd )
         q->job_failed = q->job_failed ?: j;
     }
 
+    j->queued = false;
     q->running_count --;
     q->todo_count --;
     queue_show_result( q, n, j, false );
