@@ -36,7 +36,7 @@ typedef struct
     char *srcdir;
     FILE *debug;
     bool want_debug;
-    bool watch;
+    int watch;
 
     cb_tree env;
     cb_tree nodes;
@@ -51,7 +51,7 @@ void state_init( state_t *s )
     s->srcdir = getcwd( 0, 0 );
     s->show_var = NULL;
     s->want_debug = false;
-    s->watch = false;
+    s->watch = 0;
 
     location_init( &s->loc );
     cb_init( &s->env );
@@ -185,7 +185,7 @@ bool process_option( state_t *s, int ch, const char *arg )
             env_reset( &s->env, span_lit( "config" ), span_lit( arg ) );
             return true;
         case 'w':
-            s->watch = true;
+            s->watch = atoi( arg );
             return true;
         case 'd':
             s->want_debug = true;
@@ -202,7 +202,7 @@ void parse_options( state_t *s, int argc, char *argv[] )
 {
     int ch;
 
-    while ( ( ch = getopt( argc, argv, "c:V:dw" ) ) != -1 )
+    while ( ( ch = getopt( argc, argv, "c:V:dw:" ) ) != -1 )
         if ( !process_option( s, ch, optarg ) )
             usage(), error( NULL, "unknown option -%c", ch );
 
@@ -320,9 +320,11 @@ int main( int argc, char *argv[] )
 
         while ( s.watch && !_signalled )
         {
-            sleep( 1 );
+            if ( _restat )
+                _restat = 0;
+            else
+                sleep( s.watch );
 
-            s.queue.job_failed = NULL;
             s.queue.started = time( NULL );
             graph_clear_visited( &s.goals );
             int count = 0;
