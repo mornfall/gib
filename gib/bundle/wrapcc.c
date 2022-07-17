@@ -115,12 +115,10 @@ int main( int argc, char **argv )
     argv_n[ argc + 2 ] = 0;
 
     if ( wrap( argv_n, &rv ) )
-    {
         if ( stderr_pos >= 0 && stderr_pos != lseek( 2, 0, SEEK_CUR ) )
             write( 3, "warning\n", 8 );
-        process_depfile( depfile + 3 );
-    }
 
+    process_depfile( depfile + 3 );
     unlink( depfile + 3 );
     return rv;
 }
