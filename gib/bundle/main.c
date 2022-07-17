@@ -36,6 +36,7 @@ typedef struct
     char *srcdir;
     FILE *debug;
     bool want_debug;
+    bool watch;
 
     cb_tree env;
     cb_tree nodes;
@@ -50,6 +51,7 @@ void state_init( state_t *s )
     s->srcdir = getcwd( 0, 0 );
     s->show_var = NULL;
     s->want_debug = false;
+    s->watch = false;
 
     location_init( &s->loc );
     cb_init( &s->env );
@@ -182,6 +184,9 @@ bool process_option( state_t *s, int ch, const char *arg )
         case 'c':
             env_reset( &s->env, span_lit( "config" ), span_lit( arg ) );
             return true;
+        case 'w':
+            s->watch = true;
+            return true;
         case 'd':
             s->want_debug = true;
             return true;
@@ -197,7 +202,7 @@ void parse_options( state_t *s, int argc, char *argv[] )
 {
     int ch;
 
-    while ( ( ch = getopt( argc, argv, "c:V:d" ) ) != -1 )
+    while ( ( ch = getopt( argc, argv, "c:V:dw" ) ) != -1 )
         if ( !process_option( s, ch, optarg ) )
             usage(), error( NULL, "unknown option -%c", ch );
 
@@ -310,7 +315,26 @@ int main( int argc, char *argv[] )
     env_clear( &s.env, true );
 
     if ( !s.show_var )
+    {
         queue_monitor( &s.queue, true );
+
+        while ( s.watch && !_signalled )
+        {
+            sleep( 1 );
+
+            s.queue.job_failed = NULL;
+            s.queue.started = time( NULL );
+            graph_clear_visited( &s.goals );
+            int count = 0;
+
+            if ( queue_restat( &s.queue, &s.goals, &count ) )
+            {
+                graph_clear_visited( &s.goals );
+                queue_goals( &s.queue, &s.goals, &s.nodes );
+                queue_monitor( &s.queue, true );
+            }
+        }
+    }
 
     if ( s.queue.job_failed )
     {
