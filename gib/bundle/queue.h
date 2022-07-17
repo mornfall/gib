@@ -134,8 +134,6 @@ void queue_show_result( queue_t *q, node_t *n, job_t *j, bool log_only )
         close( log.fd );
     }
 
-    q->todo_count --;
-
     if ( !_signalled && !log_only )
         fprintf( stderr, "\033[J\033[%dm%s\033[0m %s\n", color, status, n->name );
 }
@@ -236,6 +234,7 @@ void queue_cleanup_job( queue_t *q, int fd )
     }
 
     q->running_count --;
+    q->todo_count --;
     queue_show_result( q, n, j, false );
     queue_cleanup_node( q, j->node );
 }
