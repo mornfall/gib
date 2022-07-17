@@ -138,6 +138,21 @@ void graph_free( node_t *node )
     node->cmd = NULL;
 }
 
+void graph_clear_visited( cb_tree *nodes )
+{
+    for ( cb_iterator i = cb_begin( nodes ); !cb_end( &i ); cb_next( &i ) )
+    {
+        node_t *n = cb_get( &i );
+
+        if ( n->visited )
+        {
+            n->visited = false;
+            graph_clear_visited( &n->deps );
+            graph_clear_visited( &n->deps_dyn );
+        }
+    }
+}
+
 void graph_dump( FILE *out, cb_tree *t )
 {
     for ( cb_iterator i = cb_begin( t ); !cb_end( &i ); cb_next( &i ) )
