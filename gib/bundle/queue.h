@@ -14,11 +14,14 @@
 #include <dirent.h>
 #define MAX_FD 64
 
-static volatile sig_atomic_t _signalled = 0;
+static volatile sig_atomic_t _signalled = 0, _restat = 0;
 
 void sighandler( int sig )
 {
-    _signalled = sig;
+    if ( sig == SIGUSR1 )
+        _restat = 1;
+    else
+        _signalled = sig;
 }
 
 typedef struct
@@ -446,6 +449,7 @@ void queue_monitor( queue_t *q, bool endmsg )
     signal( SIGHUP, sighandler );
     signal( SIGINT, sighandler );
     signal( SIGTERM, sighandler );
+    signal( SIGUSR1, sighandler );
 
     signal( SIGPIPE, sighandler ); // ??
     signal( SIGALRM, sighandler ); // ??
