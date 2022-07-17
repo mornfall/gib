@@ -37,7 +37,8 @@ typedef struct
     cb_tree *nodes;
     cb_tree jobs;
 
-    job_t *job_next, *job_last, *job_failed;
+    job_t *job_next, *job_last;
+    job_t *job_failed;
     job_t *running[ MAX_FD ];
 
     int skipped_count;
@@ -238,7 +239,8 @@ void queue_cleanup_job( queue_t *q, int fd )
     else if ( !_signalled )
     {
         n->failed = true;
-        q->job_failed = q->job_failed ?: j;
+        j->next = q->job_failed;
+        q->job_failed = j;
     }
 
     j->queued = false;
