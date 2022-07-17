@@ -112,7 +112,9 @@ void graph_add_dep( cb_tree *t, node_t *n, span_t name, bool dyn )
     {
         dep = graph_add( t, name );
         dep->type = span_len( name ) >= 1 && name.str[ 0 ] == '/' ? sys_node : src_node;
-        graph_do_stat( dep );
+
+        if ( !graph_do_stat( dep ) )
+            dep->type = sys_node;
     }
 
     if ( !dep )
