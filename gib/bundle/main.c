@@ -328,9 +328,8 @@ int main( int argc, char *argv[] )
 
             s.queue.started = time( NULL );
             graph_clear_visited( &s.goals );
-            int count = 0;
 
-            if ( queue_restat( &s.queue, &s.goals, &count ) )
+            if ( queue_restat( &s.queue, &s.goals ) )
             {
                 graph_clear_visited( &s.goals );
                 queue_goals( &s.queue, &s.goals, &s.nodes );
