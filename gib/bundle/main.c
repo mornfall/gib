@@ -285,6 +285,21 @@ void update_goals( state_t *s, selector_t *sel )
     s->goals = target;
 }
 
+void update_failures( queue_t *q )
+{
+    while ( q->job_failed && !q->job_failed->node->failed )
+        q->job_failed = q->job_failed->next;
+
+    job_t *j = q->job_failed;
+
+    while ( j )
+    {
+        while ( j->next && !j->next->node->failed )
+            j->next = j->next->next;
+        j = j->next;
+    }
+}
+
 int main( int argc, char *argv[] )
 {
     state_t s;
@@ -331,6 +346,7 @@ int main( int argc, char *argv[] )
 
             if ( queue_restat( &s.queue, &s.goals ) )
             {
+                update_failures( &s.queue ); /* restat may have un-failed some jobs */
                 graph_clear_visited( &s.goals );
                 queue_goals( &s.queue, &s.goals, &s.nodes );
                 queue_monitor( &s.queue, true );
