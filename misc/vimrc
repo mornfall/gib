@@ -1,0 +1,2 @@
+au BufNewFile,BufRead gib/main,gib/sys.*,gib/sub.*,gib/cfg.*,*.gib set ft=gib nospell
+au BufWritePost * silent !pkill -USR1 -x 'gib|.gib.bin'
