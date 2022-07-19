@@ -129,7 +129,8 @@ void queue_show_result( queue_t *q, node_t *n, job_t *j, int verbosity )
 
     if ( ( verbosity >= 2 || !q->pause_output ) && ( n->failed || changed && j && j->warned ) )
     {
-        fprintf( stderr, "\033[J" );
+        tty_print( "" ); /* clear current line */
+
         char filename[ strlen( n->name ) + 5 ], *p = filename;
         for ( char *i = n->name; *i; ++p, ++i )
             *p = ( *i == ' ' || *i == '/' ) ? '_' : *i;
@@ -150,7 +151,8 @@ void queue_show_result( queue_t *q, node_t *n, job_t *j, int verbosity )
     }
 
     if ( verbosity >= 1 || !q->pause_output )
-        fprintf( stderr, "\033[J\033[%dm%s\033[0m %s\n", color, status, n->name );
+        if ( !tty_print( "\033[%dm%s\033[0m %s\n", color, status, n->name ) )
+            fprintf( stderr, "%s %s\n", status, n->name );
 }
 
 void queue_add( queue_t *q, job_t *j )
@@ -253,7 +255,7 @@ void queue_cleanup_job( queue_t *q, int fd )
 
     if ( n->failed )
     {
-        q->pause_output = true;
+        q->pause_output = have_tty();
         j->next = q->job_failed;
         q->job_failed = j;
     }
@@ -265,9 +267,7 @@ void queue_cleanup_job( queue_t *q, int fd )
 
 void queue_teardown( queue_t *q )
 {
-    fprintf( stderr, "\033[J\r[caught signal %d, cleaning up]\n", _signalled );
-    fflush( stderr );
-
+    tty_print( "[caught signal %d, cleaning up]\n", _signalled );
     job_t *j = NULL;
 
     for ( int fd = 0; fd < MAX_FD; ++ fd )
@@ -475,9 +475,9 @@ void queue_monitor( queue_t *q, bool endmsg )
     while ( queue_loop( q ) )
     {
         elapsed = time( NULL ) - q->started;
-        fprintf( stderr, "%d/%d running + %d/%d queued | %d ok + %d failed | %lld:%02lld elapsed\r",
-                 q->running_count, q->running_max, q->queued_count, q->queued_count + q->waiting_count,
-                 q->ok_count, q->failed_count, elapsed / 60, elapsed % 60 );
+        tty_print( "%d/%d running + %d/%d queued | %d ok + %d failed | %lld:%02lld elapsed",
+                   q->running_count, q->running_max, q->queued_count, q->queued_count + q->waiting_count,
+                   q->ok_count, q->failed_count, elapsed / 60, elapsed % 60 );
     }
 
     elapsed = time( NULL ) - q->started;
@@ -488,7 +488,8 @@ void queue_monitor( queue_t *q, bool endmsg )
             if ( fail_count || j->next || !q->pause_output )
                 queue_show_result( q, j->node, j, ++fail_count > 10 && !j->next ? 2 : 1 );
 
-        fprintf( stderr, "\033[J\rbuild finished: %d ok, %d failed, %d skipped, %lld:%02lld elapsed\n",
+        tty_print( "" ); /* clear current line */
+        fprintf( stderr, "build finished: %d ok, %d failed, %d skipped, %lld:%02lld elapsed\n",
                  q->ok_count, q->failed_count, q->skipped_count, elapsed / 60, elapsed % 60 );
 
         q->pause_output = false;

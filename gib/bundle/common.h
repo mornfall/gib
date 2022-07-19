@@ -52,6 +52,30 @@ void location_print( struct location *s, const char *reason, ... )
     va_end( ap );
 }
 
+bool have_tty()
+{
+    static int status = -1;
+
+    if ( status < 0 )
+        status = isatty( 2 );
+
+    return status;
+}
+
+bool tty_print( const char *fmt, ... )
+{
+    if ( !have_tty() )
+        return false;
+
+    fputs( "\r\033[J", stderr );
+    va_list ap;
+    va_start( ap, fmt );
+    vfprintf( stderr, fmt, ap );
+    va_end( ap );
+    fflush( stderr );
+    return true;
+}
+
 void error( struct location *s, const char *reason, ... )
 {
     va_list ap;
