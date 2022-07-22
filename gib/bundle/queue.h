@@ -127,17 +127,17 @@ void queue_show_result( queue_t *q, node_t *n, job_t *j, int verbosity )
     if ( _signalled )
         return;
 
+    char filename[ strlen( n->name ) + 5 ], *p = filename;
+    for ( char *i = n->name; *i; ++p, ++i )
+        *p = ( *i == ' ' || *i == '/' ) ? '_' : *i;
+    strcpy( p, ".txt" );
+
+    if ( n->failed )
+        linkat( q->logdir_fd, filename, q->faildir_fd, filename, 0 );
+
     if ( ( verbosity >= 2 || !q->pause_output ) && ( n->failed || changed && j && j->warned ) )
     {
         tty_print( "" ); /* clear current line */
-
-        char filename[ strlen( n->name ) + 5 ], *p = filename;
-        for ( char *i = n->name; *i; ++p, ++i )
-            *p = ( *i == ' ' || *i == '/' ) ? '_' : *i;
-        strcpy( p, ".txt" );
-
-        if ( n->failed )
-            linkat( q->logdir_fd, filename, q->faildir_fd, filename, 0 );
 
         reader_t log;
 
