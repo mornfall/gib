@@ -162,6 +162,7 @@ void queue_add( queue_t *q, job_t *j )
 
     j->changed = true;
     j->queued = true;
+    j->warned = false;
     j->next = NULL;
     ++ q->queued_count;
 
