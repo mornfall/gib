@@ -152,7 +152,7 @@ bool job_update( job_t *j, cb_tree *nodes, const char *srcdir )
     {
         j->reader = malloc( sizeof( reader_t ) );
         reader_init( j->reader, -1, NULL );
-        fcntl( j->pipe_fd, F_SETFD, O_NONBLOCK );
+        fcntl( j->pipe_fd, F_SETFL, O_NONBLOCK );
         j->reader->fd = j->pipe_fd;
     }
 
