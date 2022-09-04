@@ -28,6 +28,14 @@ struct rl_state /* rule loader */
     queue_t *queue;
 };
 
+static span_t dep_name( const char *srcdir, const char *name )
+{
+    size_t len = strlen( srcdir );
+    if ( strncmp( name, srcdir, len ) == 0 )
+        name += len + 1;
+    return span_lit( name );
+}
+
 void load_rules( cb_tree *nodes, cb_tree *env, queue_t *q, int srcdir_fd, node_t *node, location_t *loc );
 
 void rl_get_file( struct rl_state *s, node_t *n )
@@ -89,9 +97,10 @@ void rl_stanza_end( struct rl_state *s )
 
         for ( ; dep; dep = dep->next )
         {
-            node_t *dep_n = graph_get( s->nodes, span_lit( dep->data ) );
+            span_t name = dep_name( s->srcdir, dep->data );
+            node_t *dep_n = graph_get( s->nodes, name );
             assert( dep_n );
-            cb_insert( &node->deps, dep_n, offsetof( node_t, name ), strlen( dep->data ) );
+            cb_insert( &node->deps, dep_n, offsetof( node_t, name ), span_len( name ) );
         }
     }
 
@@ -187,17 +196,10 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
         if ( dep )
             for ( ; new; new = new->next )
             {
-                char *name = new->data;
-
-                if ( strncmp( name, s->srcdir, strlen( s->srcdir ) ) == 0 )
-                    name += strlen( s->srcdir ) + 1;
-
-                node_t *dep = graph_get( s->nodes, span_lit( name ) );
+                node_t *dep = graph_get( s->nodes, dep_name( s->srcdir, new->data ) );
 
                 if ( !dep || !dep->frozen )
                     error( s->loc, "dep: node for '%s' does not exist", new->data );
-
-                memmove( new->data, name, strlen( name ) + 1 );
             }
     }
 
