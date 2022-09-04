@@ -96,6 +96,8 @@ The statements are as follows:
    manifest, by hand or on the fly),
  • ‹out {path}› declare that this stanza describes a node of the build graph
    with the name given by ‹{path}›,
+ • ‹for {var} {list}› repeat the stanza for each item in ‹list›, locally
+   binding ‹var› to the item (‹for› loops may be nested),
  • ‹dep {path}› declare a static dependency,
  • ‹cmd {list}› set the command that will be executed to build the node,
  • ‹def {var}› define a macro (see below),
