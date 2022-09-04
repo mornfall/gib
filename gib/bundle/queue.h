@@ -200,7 +200,7 @@ bool queue_start_next( queue_t *q )
 
 void queue_cleanup_node( queue_t *q, node_t *n )
 {
-    if ( n->type != out_node && n->type != meta_node || n->dirty && !n->failed || n->waiting )
+    if ( n->type != out_node || n->dirty && !n->failed || n->waiting )
         return;
 
     for ( cb_iterator i = cb_begin( &n->blocking ); !cb_end( &i ); cb_next( &i ) )

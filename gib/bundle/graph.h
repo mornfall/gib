@@ -3,7 +3,7 @@
 #include "env.h"
 #include "critbit.h"
 
-typedef enum node_type { src_node, out_node, sys_node, meta_node } node_type;
+typedef enum node_type { src_node, out_node, sys_node } node_type;
 
 typedef struct node
 {

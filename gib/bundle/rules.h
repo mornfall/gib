@@ -20,7 +20,7 @@ struct rl_state /* rule loader */
     cb_tree locals, *globals, templates;
     cb_tree *nodes;
     const char *srcdir;
-    bool out_set, cmd_set, meta_set;
+    bool out_set, cmd_set;
     bool stanza_started;
     struct location *loc;
 
@@ -60,7 +60,6 @@ void rl_stanza_clear( struct rl_state *s )
 {
     s->out_set = false;
     s->cmd_set = false;
-    s->meta_set = false;
     s->stanza_started = false;
 
     env_clear( &s->locals, true );
@@ -69,18 +68,15 @@ void rl_stanza_clear( struct rl_state *s )
 
 void rl_stanza_end( struct rl_state *s )
 {
-    if ( s->out_set || s->meta_set )
+    if ( s->out_set )
     {
-        if ( s->out_set && s->meta_set )
-            error( s->loc, "can't have both 'out' and 'meta' in the same stanza" );
-
         span_t name = span_lit( env_get( &s->locals, span_lit( "out" ) )->list->data );
         node_t *node = graph_add( s->nodes, name );
 
         if ( node->frozen )
             error( s->loc, "duplicate output: %s", name.str );
 
-        node->type = s->meta_set ? meta_node : out_node;
+        node->type = out_node;
         node->frozen = true;
 
         if ( s->cmd_set )
@@ -161,9 +157,9 @@ void rl_command( struct rl_state *s, span_t cmd, span_t args )
         free( path );
     }
 
-    else if ( span_eq( cmd, "out" ) || span_eq( cmd, "meta" ) )
+    else if ( span_eq( cmd, "out" ) )
     {
-        if ( span_eq( cmd, "out" ) ) s->out_set = true; else s->meta_set = true;
+        s->out_set = true;
         var_t *out = env_set( s->loc, &s->locals, span_lit( "out" ) );
         env_expand( s->loc, out, &s->locals, s->globals, args );
         if ( !out->list || out->list->next )
