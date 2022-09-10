@@ -303,11 +303,22 @@ void update_failures( queue_t *q )
 int main( int argc, char *argv[] )
 {
     state_t s;
-    var_t *show;
 
     state_init( &s );
     parse_options( &s, argc, argv );
     state_load( &s );
+
+    if ( s.show_var )
+    {
+        var_t *show = env_get( &s.env, span_lit( s.show_var ) );
+
+        if ( show )
+            for ( value_t *val = show->list; val != NULL; val = val->next )
+                puts( val->data );
+
+        state_free( &s );
+        return show == 0;
+    }
 
     cb_init( &s.goals );
     s.goals = s.nodes; /* share */
@@ -320,37 +331,29 @@ int main( int argc, char *argv[] )
         }
 
     queue_goals( &s.queue, &s.goals, &s.nodes );
-
-    if ( s.show_var && ( show = env_get( &s.env, span_lit( s.show_var ) ) ) )
-        for ( value_t *val = show->list; val != NULL; val = val->next )
-            puts( val->data );
-
     if ( s.want_debug )
         graph_dump( s.debug, &s.nodes );
 
     env_clear( &s.env, true );
 
-    if ( !s.show_var )
+    queue_monitor( &s.queue, true );
+
+    while ( s.watch && !_signalled )
     {
-        queue_monitor( &s.queue, true );
+        if ( _restat )
+            _restat = 0;
+        else
+            sleep( s.watch );
 
-        while ( s.watch && !_signalled )
+        s.queue.started = time( NULL );
+        graph_clear_visited( &s.goals );
+
+        if ( queue_restat( &s.queue, &s.goals ) )
         {
-            if ( _restat )
-                _restat = 0;
-            else
-                sleep( s.watch );
-
-            s.queue.started = time( NULL );
+            update_failures( &s.queue ); /* restat may have un-failed some jobs */
             graph_clear_visited( &s.goals );
-
-            if ( queue_restat( &s.queue, &s.goals ) )
-            {
-                update_failures( &s.queue ); /* restat may have un-failed some jobs */
-                graph_clear_visited( &s.goals );
-                queue_goals( &s.queue, &s.goals, &s.nodes );
-                queue_monitor( &s.queue, true );
-            }
+            queue_goals( &s.queue, &s.goals, &s.nodes );
+            queue_monitor( &s.queue, true );
         }
     }
 
