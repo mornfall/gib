@@ -174,7 +174,7 @@ cb_result cb_find( cb_tree *t, span_t k )
 int cb_contains( cb_tree *t, span_t k )
 {
     cb_result r = cb_find( t, k );
-    return r.vsize != CB_VSIZE_INTERNAL && span_eq( k, r.leaf + r.vsize );
+    return r.vsize != CB_VSIZE_INTERNAL && r.leaf && span_eq( k, r.leaf + r.vsize );
 }
 
 void cb_init( cb_tree *t )
