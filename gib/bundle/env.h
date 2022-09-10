@@ -266,6 +266,7 @@ void env_expand_match( env_expand_t s, var_t *var, span_t spec, span_t prefix, s
     span_t replacement  = spec;
     span_t pattern_str  = fetch_until( &replacement, ":", '\\' );
     var_t *pattern_var  = var_alloc( span_lit( "temporary" ) );
+    bool replace        = !span_empty( replacement );
     env_expand( s.loc, pattern_var, s.local, s.global, pattern_str );
     /* TODO: quote * and % that came in from expansion */
 
@@ -274,12 +275,13 @@ void env_expand_match( env_expand_t s, var_t *var, span_t spec, span_t prefix, s
         span_t pattern    = span_lit( pat_item->data );
         span_t pat_suffix = pattern;
         span_t pat_prefix = fetch_until( &pat_suffix, "*%", '\\' );
+        if ( replace )
+            pat_suffix.str --; /* put the wildcard back */
 
         for ( cb_iterator i = cb_begin_at( &var->set, pat_prefix ); !cb_end( &i ); cb_next( &i ) )
         {
             value_t *val = cb_get( &i );
             span_t val_str = span_lit( val->data );
-            bool replace = !span_empty( replacement );
 
             if ( strncmp( val->data, pat_prefix.str, span_len( pat_prefix ) ) )
             {
