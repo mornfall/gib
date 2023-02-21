@@ -134,6 +134,8 @@ void queue_show_result( queue_t *q, node_t *n, job_t *j, int verbosity )
 
     if ( n->failed )
         linkat( q->logdir_fd, filename, q->faildir_fd, filename, 0 );
+    else
+        unlinkat( q->faildir_fd, filename, 0 );
 
     if ( ( verbosity >= 2 || !q->pause_output ) && ( n->failed || changed && j && j->warned ) )
     {
