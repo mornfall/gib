@@ -302,6 +302,8 @@ void update_failures( queue_t *q )
 
 int main( int argc, char *argv[] )
 {
+    signal( SIGUSR1, SIG_IGN );
+
     state_t s;
 
     state_init( &s );
