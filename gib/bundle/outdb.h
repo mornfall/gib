@@ -12,7 +12,7 @@ void save_dynamic( cb_tree *nodes, int dirfd, const char *path )
     {
         node_t *n = cb_get( &i );
 
-        if ( !n->deps_dyn.root )
+        if ( !n->deps_dyn.root || n->type != out_node )
             continue;
 
         writer_print( &w, "out %s\n", n->name );
